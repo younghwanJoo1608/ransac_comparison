@@ -33,3 +33,23 @@ target_link_libraries(pointcloud_generator
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
+
+add_executable(ransac1
+  src/ransac1.cpp
+)
+
+target_link_libraries(ransac1
+  pcl_visualization
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+add_executable(ransac2
+  src/ransac2.cpp
+)
+
+target_link_libraries(ransac2
+  pcl_visualization
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)

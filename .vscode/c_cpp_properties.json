@@ -1,0 +1,34 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/jyh/catkin_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/jyh/catkin_ws/src/artificial_intelligent_2023/include/**",
+        "/home/jyh/catkin_ws/src/Azure_Kinect_ROS_Driver/include/**",
+        "/home/jyh/catkin_ws/src/rise-unloader-ros/unloader_simulation/prototype_ikfast_arm0_plugin/include/**",
+        "/home/jyh/catkin_ws/src/rise-unloader-ros/unloader_simulation/prototype_ikfast_arm1_plugin/include/**",
+        "/home/jyh/catkin_ws/src/ransac_comparison/include/**",
+        "/home/jyh/catkin_ws/src/unld-pilot-robot-ros/unld_msgs/include/**",
+        "/home/jyh/catkin_ws/src/unld-pilot-robot-ros/unld_object_detection/include/**",
+        "/home/jyh/catkin_ws/src/unld-pilot-robot-ros/unld_task_planner/include/**",
+        "/home/jyh/catkin_ws/src/rise-unloader-ros/unloader_calib/include/**",
+        "/home/jyh/catkin_ws/src/rise-unloader-ros/unloader_control/include/**",
+        "/home/jyh/catkin_ws/src/rise-unloader-ros/unloader_perception/unloader_integration/include/**",
+        "/home/jyh/catkin_ws/src/rise-unloader-ros/unloader_perception/unloader_segment/include/**",
+        "/home/jyh/catkin_ws/src/rise-unloader-ros/unloader_utils/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

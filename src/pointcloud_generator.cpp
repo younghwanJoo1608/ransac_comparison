@@ -11,30 +11,32 @@
 
 #include <ros/ros.h>
 #include <random>
+#include <fstream>
+#include <unistd.h>
 
 int main(int argc, char **argv)
 {
-    int point_num = 50;
-    double xmin = -0.2;
-    double xmax = 0.2;
-    double ymin = -0.25;
-    double ymax = 0.25;
-    double zmin = -0.15;
-    double zmax = 0.15;
+    double point_size = 0.01;
+    double xmin = -0.3;
+    double xmax = 0.3;
+    double ymin = -0.4;
+    double ymax = 0.4;
+    double zmin = -0.2;
+    double zmax = 0.2;
 
     // Plane1 : front plane
     pcl::PointCloud<pcl::PointXYZ>::Ptr plane1(new pcl::PointCloud<pcl::PointXYZ>());
-    for (int i = 0; i < point_num; i++)
+    for (double i = ymin; i <= ymax; i += point_size)
     {
-        for (int j = 0; j < point_num; j++)
+        for (double j = zmin; j <= zmax; j += point_size)
         {
-                pcl::PointXYZ point;
+            pcl::PointXYZ point;
 
-                point.x = xmin;
-                point.y = ymin + (ymax - ymin) / point_num * i;
-                point.z = zmin + (zmax - zmin) / point_num * j;
+            point.x = xmin;
+            point.y = i;
+            point.z = j;
 
-                plane1->push_back(point);
+            plane1->push_back(point);
         }
     }
 
@@ -52,15 +54,15 @@ int main(int argc, char **argv)
 
     // Plane2 : right side plane
     pcl::PointCloud<pcl::PointXYZ>::Ptr plane2(new pcl::PointCloud<pcl::PointXYZ>());
-    for (int i = 0; i < point_num; i++)
+    for (double i = xmin; i < xmax; i += point_size)
     {
-        for (int j = 0; j < point_num; j++)
+        for (double j = zmin; j < zmax; j += point_size)
         {
             pcl::PointXYZ point;
 
-            point.x = xmin + (xmax - xmin) / point_num * i;
+            point.x = i;
             point.y = ymin;
-            point.z = zmin + (zmax - zmin) / point_num * j;
+            point.z = j;
 
             plane2->push_back(point);
         }
@@ -80,14 +82,14 @@ int main(int argc, char **argv)
 
     // Plane3 : upper plane
     pcl::PointCloud<pcl::PointXYZ>::Ptr plane3(new pcl::PointCloud<pcl::PointXYZ>());
-    for (int i = 0; i < point_num; i++)
+    for (double i = xmin; i < xmax; i += point_size)
     {
-        for (int j = 0; j < point_num; j++)
+        for (double j = ymin; j < ymax; j += point_size)
         {
             pcl::PointXYZ point;
 
-            point.x = xmin + (xmax - xmin) / point_num * i;
-            point.y = ymin + (ymax - ymin) / point_num * j;
+            point.x = i;
+            point.y = j;
             point.z = zmax;
 
             plane3->push_back(point);
@@ -104,7 +106,7 @@ int main(int argc, char **argv)
     seg3.setInputCloud(plane3);
     seg3.segment(*inliers3, *plane_eq3);
 
-    ROS_INFO("Plane 2 :%fx + %fy + %fz = %f", plane_eq3->values.at(0), plane_eq3->values.at(1), plane_eq3->values.at(2), plane_eq3->values.at(3));
+    ROS_INFO("Plane 3 :%fx + %fy + %fz = %f", plane_eq3->values.at(0), plane_eq3->values.at(1), plane_eq3->values.at(2), plane_eq3->values.at(3));
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr planes(new pcl::PointCloud<pcl::PointXYZ>());
     planes->points.resize(plane1->size() + plane2->size() + plane3->size());
@@ -122,9 +124,17 @@ int main(int argc, char **argv)
         planes->points[i].z += dist(gen);
     }
 
+    std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/points.txt");
+
+    for (int i = 0; i < planes->size(); i++)
+    {
+        outfile << planes->points[i].x << "\t" << planes->points[i].y << "\t" << planes->points[i].z << std::endl;
+    }
+
+        
     pcl::ModelCoefficients::Ptr plane_eq(new pcl::ModelCoefficients);
     pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    pcl::SACSegmentation<pcl::PointXYZ> seg;
+    pcl::SACSegmentation<pcl::PointXYZ> seg(true);
     seg.setOptimizeCoefficients(true);
     seg.setModelType(pcl::SACMODEL_PLANE);
     seg.setMethodType(pcl::SAC_RANSAC);
@@ -132,8 +142,14 @@ int main(int argc, char **argv)
     seg.setInputCloud(planes);
     seg.segment(*inliers, *plane_eq);
 
-    ROS_INFO("Plane 2 :%fx + %fy + %fz = %f", plane_eq->values.at(0), plane_eq->values.at(1), plane_eq->values.at(2), plane_eq->values.at(3));
+    //outfile << plane_eq->values.at(0) << "\t" << plane_eq->values.at(1) << "\t" << plane_eq->values.at(2) << "\t" << plane_eq->values.at(3) << std::endl;
+    ROS_INFO("Plane 3 :%fx + %fy + %fz = %f", plane_eq->values.at(0), plane_eq->values.at(1), plane_eq->values.at(2), plane_eq->values.at(3));
 
+    sleep(1);
+        
+        //outfile.close();
+
+    ROS_INFO("data saved");
     ROS_INFO("plane1 : %d points", plane1->size());
     ROS_INFO("plane2 : %d points", plane2->size());
     ROS_INFO("plane3 : %d points", plane3->size());
@@ -141,7 +157,7 @@ int main(int argc, char **argv)
 
     pcl::visualization::PCLVisualizer viewer1("Simple Cloud Viewer");
     viewer1.addPointCloud<pcl::PointXYZ>(planes, "src_red");
-    //viewer1.addPlane(*plane_eq, "plane");
+    viewer1.addPlane(*plane_eq, "plane");
 
     while (!viewer1.wasStopped())
     {
