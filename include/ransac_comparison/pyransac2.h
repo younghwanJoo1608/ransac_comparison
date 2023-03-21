@@ -1,6 +1,7 @@
 #include <pcl/filters/random_sample.h>
 #include <Eigen/Dense>
 #include <cmath>
+#include <pcl/search/kdtree.h>
 
 void CuboidRANSAC(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                 float thresh,
