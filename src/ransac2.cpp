@@ -18,8 +18,10 @@
 
 int main(int argc, char **argv)
 {
+    ros::init(argc, argv, "test");
+    ros::NodeHandle nh;
     float ransac_thresh = 0.01;
-    int ransac_max_iteration = 1000;
+    int ransac_max_iteration = 500;
     int min_points_of_cluster = 5;
 
     std::ifstream infile("/home/jyh/catkin_ws/src/ransac_comparison/data/points.txt");
@@ -53,18 +55,20 @@ int main(int argc, char **argv)
         planes->points[i].z = v[i][2];
     }
 
-    std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac2_1.txt");
-    std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac2_2.txt");
-    std::ofstream outfile3("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac2_3.txt");
+    std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_0410_1.txt");
+    std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_0410_2.txt");
+    std::ofstream outfile3("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_0410_3.txt");
 
-    for (int i = 0; i < 1000; i++)
+    double dur = 0;
+    for (int i = 0; i < 10; i++)
     {
+        double start = ros::Time::now().toNSec();
         int n_front_inliers = 0;
         float thresh = ransac_thresh;
         int max_iteration = ransac_max_iteration;
         std::vector<Eigen::Vector4f> plane_eqs;
         CuboidRANSAC(planes, thresh, max_iteration, plane_eqs, n_front_inliers);
-
+        double end = ros::Time::now().toNSec();
         if (n_front_inliers < min_points_of_cluster)
         {
             std::cout << "Failed to compute plane for yolact instance" << std::endl;
@@ -85,7 +89,6 @@ int main(int argc, char **argv)
                   std::end(plane_eqs),
                   [](const Eigen::Vector4f &a, const Eigen::Vector4f &b)
                   { return a[3] > b[3]; });
-
         outfile1 << plane_eqs[0][0] << "\t" << plane_eqs[0][1] << "\t" << plane_eqs[0][2] << "\t" << plane_eqs[0][3] << std::endl;
         outfile2 << plane_eqs[1][0] << "\t" << plane_eqs[1][1] << "\t" << plane_eqs[1][2] << "\t" << plane_eqs[1][3] << std::endl;
         outfile3 << plane_eqs[2][0] << "\t" << plane_eqs[2][1] << "\t" << plane_eqs[2][2] << "\t" << plane_eqs[2][3] << std::endl;
@@ -97,6 +100,8 @@ int main(int argc, char **argv)
         // {
         //     plane_eq->values.at(i) = plane_eqs[2][i];
         // }
+        dur += (end - start);
+        std::cout << end - start << std::endl;
     }
 
     outfile1.close();
@@ -111,6 +116,6 @@ int main(int argc, char **argv)
     // {
     //     viewer1.spinOnce();
     // }
-
+    std::cout << dur / 50 << std::endl;
     ROS_INFO("data saved");
 }
