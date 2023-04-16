@@ -69,7 +69,8 @@
         "variant": "cpp",
         "core": "cpp",
         "numericaldiff": "cpp",
-        "dense": "cpp"
+        "dense": "cpp",
+        "csignal": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/jyh/catkin_ws/devel/lib/python3/dist-packages",

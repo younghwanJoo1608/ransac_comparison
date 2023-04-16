@@ -4,7 +4,7 @@
 #include <pcl/ModelCoefficients.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/extract_indices.h>
-
+#include <pcl/common/impl/common.hpp>
 #include <boost/random.hpp>
 
 #include <Eigen/Dense>
@@ -43,14 +43,22 @@ namespace pcl
         }
         ~Pyransac() override = default;
 
+        inline __m256 dist8(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_,
+                                            const std::size_t i, const __m256 &a_vec, const __m256 &b_vec, const __m256 &c_vec, const __m256 &d_vec, const __m256 &abs_help) const;
+
         void SelectWithinDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_,
-                                  std::vector<pcl::ModelCoefficients::Ptr> &model_coefficients,
+                                  std::vector<Eigen::Vector4f> &model_coefficients,
                                   float threshold_,
                                   pcl::Indices &inliers);
+        std::size_t CountWithinDistanceAVX(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_,
+                                           std::vector<Eigen::Vector4f> &model_coefficients,
+                                           float threshold_,
+                                           std::size_t i = 0);
 
         std::size_t CountWithinDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_,
-                                        std::vector<pcl::ModelCoefficients::Ptr> &model_coefficients,
-                                        float threshold_);
+                                        std::vector<Eigen::Vector4f> &model_coefficients,
+                                        float threshold_,
+                                        std::size_t i);
 
         void SetProbability(float prob) { probability_ = prob; }
 
@@ -62,11 +70,11 @@ namespace pcl
 
         bool ComputeModelCoefficients(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_,
                                       pcl::Indices &samples,
-                                      std::vector<pcl::ModelCoefficients::Ptr> &model_coefficients);
+                                      std::vector<Eigen::Vector4f> &model_coefficients);
 
         bool ComputeModel(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                           pcl::Indices &inliers,
-                          std::vector<pcl::ModelCoefficients::Ptr> &model_coefficients,
+                          std::vector<Eigen::Vector4f> &model_coefficients,
                           float threshold_,
                           int &n_best_inliers_count);
 

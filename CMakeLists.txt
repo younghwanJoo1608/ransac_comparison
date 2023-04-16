@@ -17,7 +17,7 @@ find_package(OpenMP REQUIRED)
 find_package(OpenMP REQUIRED)
 if (OPENMP_FOUND)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}  -msse4.1")
 endif()
 
 
@@ -28,7 +28,7 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
-add_compile_options(-pg -fprofile-arcs -ftest-coverage)
+add_compile_options(-pg -fprofile-arcs -ftest-coverage -mavx2)
 set(catkin_LIBRARIES ${catkin_LIBRARIES} -pg -fprofile-arcs -ftest-coverage)
 
 include_directories(
@@ -65,6 +65,17 @@ add_executable(ransac_pcl
 
 target_link_libraries(ransac_pcl
   pcl_visualization
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+add_executable(ransac_new
+  src/ransac_new.cpp
+)
+
+target_link_libraries(ransac_new
+  pcl_visualization
+  ${OpenMP_LIBS}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
