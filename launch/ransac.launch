@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+  <node pkg="ransac_comparison" type="ransac_pcl" name="ransac_pcl" output="screen"/>
+
+</launch>

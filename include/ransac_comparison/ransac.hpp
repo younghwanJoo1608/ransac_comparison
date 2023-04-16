@@ -82,38 +82,20 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     int threads = threads_;
     if (threads >= 0)
     {
-#if OPENMP_AVAILABLE_RANSAC
-        if (threads == 0)
-        {
-            threads = omp_get_num_procs();
-            PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Automatic number of threads requested, choosing %i threads.\n", threads);
-        }
-#else
         // Parallelization desired, but not available
         PCL_WARN("[pcl::RandomSampleConsensus::computeModel] Parallelization is requested, but OpenMP 3.1 is not available! Continuing without parallelization.\n");
         threads = -1;
-#endif
     }
 
-#if OPENMP_AVAILABLE_RANSAC
-#pragma omp parallel if (threads > 0) num_threads(threads) shared(k, skipped_count, n_best_inliers_count) private(selection, model_coefficients, n_inliers_count) // would be nice to have a default(none)-clause here, but then some compilers complain about the shared const variables
-#endif
     {
-#if OPENMP_AVAILABLE_RANSAC
-        if (omp_in_parallel())
-#pragma omp master
-            PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Computing in parallel with up to %i threads.\n", omp_get_num_threads());
-        else
-#endif
+
             PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Computing not parallel.\n");
 
         // Iterate
         while (true) // infinite loop with four possible breaks
         {
             // Get X samples which satisfy the model criteria
-#if OPENMP_AVAILABLE_RANSAC
-#pragma omp critical(samples)
-#endif
+
             {
                 sac_model_->getSamples(iterations_, selection); // The random number generator used when choosing the samples should not be called in parallel
             }
@@ -129,9 +111,7 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
             {
                 //++iterations_;
                 unsigned skipped_count_tmp;
-#if OPENMP_AVAILABLE_RANSAC
-#pragma omp atomic capture
-#endif
+
                 skipped_count_tmp = ++skipped_count;
                 if (skipped_count_tmp < max_skip)
                     continue;
@@ -147,16 +127,12 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
             n_inliers_count = sac_model_->countWithinDistance(model_coefficients, threshold_); // This functions has to be thread-safe. Most work is done here
 
             std::size_t n_best_inliers_count_tmp;
-#if OPENMP_AVAILABLE_RANSAC
-#pragma omp atomic read
-#endif
+
             n_best_inliers_count_tmp = n_best_inliers_count;
 
             if (n_inliers_count > n_best_inliers_count_tmp) // This condition is false most of the time, and the critical region is not entered, hopefully leading to more efficient concurrency
             {
-#if OPENMP_AVAILABLE_RANSAC
-#pragma omp critical(update) // n_best_inliers_count, model_, model_coefficients_, k are shared and read/write must be protected
-#endif
+
                 {
                     // Better match ?
                     if (n_inliers_count > n_best_inliers_count)
@@ -180,19 +156,13 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
 
             int iterations_tmp;
             double k_tmp;
-#if OPENMP_AVAILABLE_RANSAC
-#pragma omp atomic capture
-#endif
+
             iterations_tmp = ++iterations_;
-#if OPENMP_AVAILABLE_RANSAC
-#pragma omp atomic read
-#endif
+
             k_tmp = k;
-#if OPENMP_AVAILABLE_RANSAC
-            PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Trial %d out of %f: %u inliers (best is: %u so far) (thread %d).\n", iterations_tmp, k_tmp, n_inliers_count, n_best_inliers_count_tmp, omp_get_thread_num());
-#else
+
             PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Trial %d out of %f: %u inliers (best is: %u so far).\n", iterations_tmp, k_tmp, n_inliers_count, n_best_inliers_count_tmp);
-#endif
+
             if (iterations_tmp > k_tmp)
                 break;
             if (iterations_tmp > max_iterations_)
@@ -216,6 +186,7 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     std::cout << "Select" << std::endl;
     // Get the set of inliers that correspond to the best model found so far
     sac_model_->selectWithinDistance(model_coefficients_, threshold_, inliers_);
+    model_coefficients.resize(0, 0);
     return (true);
 }
 
