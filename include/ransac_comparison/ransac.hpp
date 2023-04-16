@@ -69,7 +69,7 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     double k = std::numeric_limits<double>::max();
 
     std::vector<int> selection;
-    Eigen::VectorXf model_coefficients;
+    Eigen::VectorXf model_coefficients(4);
 
     const double log_probability = std::log(1.0 - probability_);
     const double one_over_indices = 1.0 / static_cast<double>(sac_model_->getIndices()->size());
@@ -186,7 +186,6 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     std::cout << "Select" << std::endl;
     // Get the set of inliers that correspond to the best model found so far
     sac_model_->selectWithinDistance(model_coefficients_, threshold_, inliers_);
-    model_coefficients.resize(0, 0);
     return (true);
 }
 
