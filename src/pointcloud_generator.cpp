@@ -124,12 +124,12 @@ int main(int argc, char **argv)
         planes->points[i].z += dist(gen);
     }
 
-    std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/points.txt");
+    // std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/points.txt");
 
-    for (int i = 0; i < planes->size(); i++)
-    {
-        outfile << planes->points[i].x << "\t" << planes->points[i].y << "\t" << planes->points[i].z << std::endl;
-    }
+    // for (int i = 0; i < planes->size(); i++)
+    // {
+    //     outfile << planes->points[i].x << "\t" << planes->points[i].y << "\t" << planes->points[i].z << std::endl;
+    // }
 
         
     pcl::ModelCoefficients::Ptr plane_eq(new pcl::ModelCoefficients);
@@ -157,8 +157,8 @@ int main(int argc, char **argv)
 
     pcl::visualization::PCLVisualizer viewer1("Simple Cloud Viewer");
     viewer1.addPointCloud<pcl::PointXYZ>(planes, "src_red");
-    viewer1.addPlane(*plane_eq, "plane");
-
+    viewer1.addPlane(*plane_eq1, "plane");
+    viewer1.addPlane(*plane_eq2, "plane");
     while (!viewer1.wasStopped())
     {
         viewer1.spinOnce();

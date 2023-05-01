@@ -54,19 +54,24 @@ int main(int argc, char **argv)
     // std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/pyransac_pcl.txt");
 
     std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new.txt");
-    // std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl3_2.txt");
+    std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new2.txt");
     // std::ofstream outfile3("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl3_3.txt");
 
     double dur = 0;
     for (int i = 0; i < 10; i++)
     {
         double start = ros::Time::now().toNSec();
-        std::vector<pcl::ModelCoefficients::Ptr> plane_eq_model;
+        std::vector<pcl::ModelCoefficients> plane_eq_model;
 
-        pcl::ModelCoefficients::Ptr plane_eq(new pcl::ModelCoefficients);
+        pcl::ModelCoefficients::Ptr plane_eq1(new pcl::ModelCoefficients);
+        pcl::ModelCoefficients::Ptr plane_eq2(new pcl::ModelCoefficients);
+
+        plane_eq_model.push_back(*plane_eq1);
+        plane_eq_model.push_back(*plane_eq2);
+
         pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
         pcl::SACSegmentation<pcl::PointXYZ> seg(true);
-        seg.setOptimizeCoefficients(true);
+        seg.setOptimizeCoefficients(false);
         seg.setModelType(pcl::SACMODEL_PLANE);
         std::cout << "model_type_: " << seg.getModelType() << std::endl;
 
@@ -77,14 +82,16 @@ int main(int argc, char **argv)
         std::cout << "isCuboid: " << seg.getIsCuboid() << std::endl;
 
         std::cout << "before start" << std::endl;
-        seg.segment(*inliers, *plane_eq);
+        seg.segment(*inliers, plane_eq_model);
 
         // std::vector<Eigen::Vector4f> plane_eqs;
 
         double end = ros::Time::now().toNSec();
         dur += (end - start);
         std::cout << "Total Duration : " << (end - start) / 1000000 << " ms" << std::endl;
-        outfile1 << plane_eq->values.at(0) << "\t" << plane_eq->values.at(1) << "\t" << plane_eq->values.at(2) << "\t" << plane_eq->values.at(3) << std::endl; // for (int j = 0; j < plane_eqs.size(); j++)
+        outfile1 << plane_eq_model[0].values.at(0) << "\t" << plane_eq_model[0].values.at(1) << "\t" << plane_eq_model[0].values.at(2) << "\t" << plane_eq_model[0].values.at(3) << std::endl;
+        outfile2 << plane_eq_model[1].values.at(0) << "\t" << plane_eq_model[1].values.at(1) << "\t" << plane_eq_model[1].values.at(2) << "\t" << plane_eq_model[1].values.at(3) << std::endl;
+        // for (int j = 0; j < plane_eqs.size(); j++)
         // {
         //     if (plane_eqs[j][3] < 0)
         //     {
@@ -119,7 +126,7 @@ int main(int argc, char **argv)
     }
 
     outfile1.close();
-    // outfile2.close();
+    outfile2.close();
     // outfile3.close();
 
     // pcl::visualization::PCLVisualizer viewer1("Simple Cloud Viewer");

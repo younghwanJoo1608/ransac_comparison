@@ -45,10 +45,12 @@
 
 // Sample Consensus methods
 #include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/sac.h>
+//#include <pcl/sample_consensus/sac.h>
+#include "sac.h"
 // Sample Consensus models
 #include <pcl/sample_consensus/model_types.h>
-#include <pcl/sample_consensus/sac_model.h>
+//#include <pcl/sample_consensus/sac_model.h>
+#include "sac_model.h"
 
 #include <pcl/search/search.h>
 
@@ -240,7 +242,7 @@ namespace pcl
          * \param[out] model_coefficients the resultant model coefficients
          */
         virtual void
-        segment(PointIndices &inliers, ModelCoefficients &model_coefficients);
+        segment(PointIndices &inliers, std::vector<ModelCoefficients> &model_coefficients);
 
     protected:
         /** \brief Initialize the Sample Consensus model and set its parameters.

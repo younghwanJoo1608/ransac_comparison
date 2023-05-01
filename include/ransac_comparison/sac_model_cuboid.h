@@ -40,7 +40,9 @@
 
 #pragma once
 
-#include <pcl/sample_consensus/sac_model_plane.h>
+//#include <pcl/sample_consensus/sac_model_plane.h>
+#include "sac_model_plane.h"
+#include <pcl/filters/extract_indices.h>
 
 namespace pcl
 {
@@ -66,10 +68,14 @@ namespace pcl
     {
     public:
         using SampleConsensusModel<PointT>::model_name_;
+        using SampleConsensusModel<PointT>::input_;
+        using SampleConsensusModel<PointT>::temp_;
+        using SampleConsensusModel<PointT>::indices_;
+        using SampleConsensusModel<PointT>::error_sqr_dists_;
 
-        using PointCloud = typename SampleConsensusModelPlane<PointT>::PointCloud;
-        using PointCloudPtr = typename SampleConsensusModelPlane<PointT>::PointCloudPtr;
-        using PointCloudConstPtr = typename SampleConsensusModelPlane<PointT>::PointCloudConstPtr;
+        using PointCloud = typename SampleConsensusModelCuboid<PointT>::PointCloud;
+        using PointCloudPtr = typename SampleConsensusModelCuboid<PointT>::PointCloudPtr;
+        using PointCloudConstPtr = typename SampleConsensusModelCuboid<PointT>::PointCloudConstPtr;
 
         using Ptr = shared_ptr<SampleConsensusModelCuboid<PointT>>;
         using ConstPtr = shared_ptr<const SampleConsensusModelCuboid<PointT>>;
@@ -160,7 +166,7 @@ namespace pcl
 
         /** \brief Return a unique id for this model (SACMODEL_PARALLEL_PLANE). */
         inline pcl::SacModel
-        getModelType() const override { return (SACMODEL_PARALLEL_PLANE); }
+        getModelType() const override { return (SACMODEL_PLANE); }
 
     protected:
         using SampleConsensusModel<PointT>::sample_size_;
@@ -172,6 +178,29 @@ namespace pcl
         bool
         isModelValid(const Eigen::VectorXf &model_coefficients) const override;
 
+        void
+        filterInliers(Indices &inliers, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered, bool isfirst) override;
+        void
+        resetIndices(Indices &new_inliers, PointCloud &filtered) override;
+        bool
+        computeModelCoefficientsSecond(const std::vector<int> &samples,
+                                       Eigen::VectorXf &model_coefficients,
+                                       PointCloud &cloud) const override;
+        bool
+        computeModelCoefficientsThird(const std::vector<int> &samples,
+                                      Eigen::VectorXf &model_coefficients,
+                                      PointCloud &cloud) const override;
+        std::size_t
+        countWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
+                                  const double threshold,
+                                  Indices &new_indices,
+                                  PointCloud &cloud) const override;
+        void
+        selectWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
+                                   const double threshold,
+                                   std::vector<int> &inliers,
+                                   Indices &new_indices,
+                                   PointCloud &cloud) override;
         /** \brief The axis along which we need to search for a plane perpendicular to. */
         Eigen::Vector3f axis_;
 
@@ -180,6 +209,8 @@ namespace pcl
 
         /** \brief The sine of the angle*/
         double sin_angle_;
+
+        PointCloudPtr filtered_pcd_;
     };
 }
 

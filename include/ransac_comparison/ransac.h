@@ -40,9 +40,10 @@
 
 #pragma once
 
-#include <pcl/sample_consensus/sac.h>
-#include <pcl/sample_consensus/sac_model.h>
-
+// #include <pcl/sample_consensus/sac.h>
+// #include <pcl/sample_consensus/sac_model.h>
+#include "sac.h"
+#include "sac_model.h"
 namespace pcl
 {
     /** \brief @b RandomSampleConsensus represents an implementation of the RANSAC (RANdom SAmple Consensus) algorithm, as
@@ -67,6 +68,7 @@ namespace pcl
         using SampleConsensus<PointT>::sac_model_;
         using SampleConsensus<PointT>::model_;
         using SampleConsensus<PointT>::model_coefficients_;
+        using SampleConsensus<PointT>::model_coefficients_vector_;
         using SampleConsensus<PointT>::inliers_;
         using SampleConsensus<PointT>::probability_;
         using SampleConsensus<PointT>::threads_;

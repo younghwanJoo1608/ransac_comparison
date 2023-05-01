@@ -42,43 +42,46 @@
 #define SAC_SEGMENTATION_H_
 
 #include "sac_segmentation.h"
-
+#include "sac.h"
+#include "sac_model.h"
 // Sample Consensus methods
-#include <pcl/sample_consensus/sac.h>
+//#include <pcl/sample_consensus/sac.h>
 #include "ransac.h"
 
 
 // Sample Consensus models
-#include <pcl/sample_consensus/sac_model.h>
-#include <pcl/sample_consensus/sac_model_circle.h>
-#include <pcl/sample_consensus/sac_model_circle3d.h>
-#include <pcl/sample_consensus/sac_model_cone.h>
-#include <pcl/sample_consensus/sac_model_cylinder.h>
-#include <pcl/sample_consensus/sac_model_line.h>
-#include <pcl/sample_consensus/sac_model_normal_plane.h>
-#include <pcl/sample_consensus/sac_model_parallel_plane.h>
-#include <pcl/sample_consensus/sac_model_normal_parallel_plane.h>
-#include <pcl/sample_consensus/sac_model_parallel_line.h>
-#include <pcl/sample_consensus/sac_model_perpendicular_plane.h>
-#include <pcl/sample_consensus/sac_model_plane.h>
-#include <pcl/sample_consensus/sac_model_sphere.h>
-#include <pcl/sample_consensus/sac_model_normal_sphere.h>
-#include <pcl/sample_consensus/sac_model_stick.h>
+//#include <pcl/sample_consensus/sac_model.h>
+// #include <pcl/sample_consensus/sac_model_circle.h>
+// #include <pcl/sample_consensus/sac_model_circle3d.h>
+// #include <pcl/sample_consensus/sac_model_cone.h>
+// #include <pcl/sample_consensus/sac_model_cylinder.h>
+// #include <pcl/sample_consensus/sac_model_line.h>
+// #include <pcl/sample_consensus/sac_model_normal_plane.h>
+// #include <pcl/sample_consensus/sac_model_parallel_plane.h>
+// #include <pcl/sample_consensus/sac_model_normal_parallel_plane.h>
+// #include <pcl/sample_consensus/sac_model_parallel_line.h>
+// #include <pcl/sample_consensus/sac_model_perpendicular_plane.h>
+// #include <pcl/sample_consensus/sac_model_plane.h>
+// #include <pcl/sample_consensus/sac_model_sphere.h>
+// #include <pcl/sample_consensus/sac_model_normal_sphere.h>
+// #include <pcl/sample_consensus/sac_model_stick.h>
+#include "sac_model_plane.h"
 #include "sac_model_cuboid.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT>
-void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, ModelCoefficients &model_coefficients)
+void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<ModelCoefficients> &model_coefficients)
 {
-    std::cout << "segment!!" << std::endl;
-
     // Copy the header information
-    inliers.header = model_coefficients.header = input_->header;
+    inliers.header = model_coefficients[0].header = input_->header;
 
     if (!initCompute())
     {
         inliers.indices.clear();
-        model_coefficients.values.clear();
+        for (int i = 0; i < model_coefficients.size(); i++)
+        {
+            model_coefficients[i].values.clear();
+        }
         return;
     }
 
@@ -88,7 +91,10 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, ModelCoefficie
         PCL_ERROR("[pcl::%s::segment] Error initializing the SAC model!\n", getClassName().c_str());
         deinitCompute();
         inliers.indices.clear();
-        model_coefficients.values.clear();
+        for (int i = 0; i < model_coefficients.size(); i++)
+        {
+            model_coefficients[i].values.clear();
+        }
         return;
     }
     // Initialize the Sample Consensus method and set its parameters
@@ -99,34 +105,44 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, ModelCoefficie
         PCL_ERROR("[pcl::%s::segment] Error segmenting the model! No solution found.\n", getClassName().c_str());
         deinitCompute();
         inliers.indices.clear();
-        model_coefficients.values.clear();
+        for (int i = 0; i < model_coefficients.size(); i++)
+        {
+            model_coefficients[i].values.clear();
+        }
         return;
     }
-
     // Get the model inliers
     sac_->getInliers(inliers.indices);
     std::cout << "inlers : " << inliers.indices.size() << std::endl;
     // Get the model coefficients
-    Eigen::VectorXf coeff;
-    sac_->getModelCoefficients(coeff);
-    std::cout << "model_coefficients : " << coeff[0] << ", " << coeff[1] << ", " << coeff[2] << ", " << coeff[3] << ", " << std::endl;
+    std::vector<Eigen::VectorXf> coeffs;
+    sac_->getModelCoefficients(coeffs);
+    for (int i = 0; i < coeffs.size(); i++)
+    {
+        Eigen::VectorXf coeff = coeffs[i];
+        std::cout << "model_coefficients : " << coeff[0] << ", " << coeff[1] << ", " << coeff[2] << ", " << coeff[3] << ", " << std::endl;
+    }
 
     // If the user needs optimized coefficients
-    if (optimize_coefficients_)
-    {
-        Eigen::VectorXf coeff_refined;
-        model_->optimizeModelCoefficients(inliers.indices, coeff, coeff_refined);
-        model_coefficients.values.resize(coeff_refined.size());
-        memcpy(&model_coefficients.values[0], &coeff_refined[0], coeff_refined.size() * sizeof(float));
-        // Refine inliers
-        model_->selectWithinDistance(coeff_refined, threshold_, inliers.indices);
-    }
-    else
-    {
-        model_coefficients.values.resize(coeff.size());
-        memcpy(&model_coefficients.values[0], &coeff[0], coeff.size() * sizeof(float));
-    }
+    // if (optimize_coefficients_)
+    // {
+    //     std::cout << "true : " << std::endl;
 
+    //     Eigen::VectorXf coeff_refined(4);
+    //     model_->optimizeModelCoefficients(inliers.indices, coeff, coeff_refined);
+    //     model_coefficients.values.resize(coeff_refined.size());
+    //     memcpy(&model_coefficients.values[0], &coeff_refined[0], coeff_refined.size() * sizeof(float));
+    //     // Refine inliers
+    //     model_->selectWithinDistance(coeff_refined, threshold_, inliers.indices);
+    // }
+
+    //std::cout << "false : " << std::endl;
+
+    for (int i = 0; i < coeffs.size(); i++)
+    {
+        model_coefficients[i].values.resize(coeffs[i].size());
+        memcpy(&model_coefficients[i].values[0], &coeffs[i][0], coeffs[i].size() * sizeof(float));
+    }
     deinitCompute();
 }
 
@@ -158,118 +174,118 @@ bool pcl::SACSegmentation<PointT>::initSACModel(const int model_type)
         }
 
     }
-    case SACMODEL_LINE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_LINE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelLine<PointT>(input_, *indices_, random_));
-        break;
-    }
-    case SACMODEL_STICK:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_STICK\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelStick<PointT>(input_, *indices_));
-        double min_radius, max_radius;
-        model_->getRadiusLimits(min_radius, max_radius);
-        if (radius_min_ != min_radius && radius_max_ != max_radius)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
-            model_->setRadiusLimits(radius_min_, radius_max_);
-        }
-        break;
-    }
-    case SACMODEL_CIRCLE2D:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CIRCLE2D\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelCircle2D<PointT>(input_, *indices_, random_));
-        typename SampleConsensusModelCircle2D<PointT>::Ptr model_circle = boost::static_pointer_cast<SampleConsensusModelCircle2D<PointT>>(model_);
-        double min_radius, max_radius;
-        model_circle->getRadiusLimits(min_radius, max_radius);
-        if (radius_min_ != min_radius && radius_max_ != max_radius)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
-            model_circle->setRadiusLimits(radius_min_, radius_max_);
-        }
-        break;
-    }
-    case SACMODEL_CIRCLE3D:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CIRCLE3D\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelCircle3D<PointT>(input_, *indices_));
-        typename SampleConsensusModelCircle3D<PointT>::Ptr model_circle3d = boost::static_pointer_cast<SampleConsensusModelCircle3D<PointT>>(model_);
-        double min_radius, max_radius;
-        model_circle3d->getRadiusLimits(min_radius, max_radius);
-        if (radius_min_ != min_radius && radius_max_ != max_radius)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
-            model_circle3d->setRadiusLimits(radius_min_, radius_max_);
-        }
-        break;
-    }
-    case SACMODEL_SPHERE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_SPHERE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelSphere<PointT>(input_, *indices_, random_));
-        typename SampleConsensusModelSphere<PointT>::Ptr model_sphere = boost::static_pointer_cast<SampleConsensusModelSphere<PointT>>(model_);
-        double min_radius, max_radius;
-        model_sphere->getRadiusLimits(min_radius, max_radius);
-        if (radius_min_ != min_radius && radius_max_ != max_radius)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
-            model_sphere->setRadiusLimits(radius_min_, radius_max_);
-        }
-        break;
-    }
-    case SACMODEL_PARALLEL_LINE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_PARALLEL_LINE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelParallelLine<PointT>(input_, *indices_, random_));
-        typename SampleConsensusModelParallelLine<PointT>::Ptr model_parallel = boost::static_pointer_cast<SampleConsensusModelParallelLine<PointT>>(model_);
-        if (axis_ != Eigen::Vector3f::Zero() && model_parallel->getAxis() != axis_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
-            model_parallel->setAxis(axis_);
-        }
-        if (eps_angle_ != 0.0 && model_parallel->getEpsAngle() != eps_angle_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
-            model_parallel->setEpsAngle(eps_angle_);
-        }
-        break;
-    }
-    case SACMODEL_PERPENDICULAR_PLANE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_PERPENDICULAR_PLANE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelPerpendicularPlane<PointT>(input_, *indices_, random_));
-        typename SampleConsensusModelPerpendicularPlane<PointT>::Ptr model_perpendicular = boost::static_pointer_cast<SampleConsensusModelPerpendicularPlane<PointT>>(model_);
-        if (axis_ != Eigen::Vector3f::Zero() && model_perpendicular->getAxis() != axis_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
-            model_perpendicular->setAxis(axis_);
-        }
-        if (eps_angle_ != 0.0 && model_perpendicular->getEpsAngle() != eps_angle_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
-            model_perpendicular->setEpsAngle(eps_angle_);
-        }
-        break;
-    }
-    case SACMODEL_PARALLEL_PLANE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_PARALLEL_PLANE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelParallelPlane<PointT>(input_, *indices_, random_));
-        typename SampleConsensusModelParallelPlane<PointT>::Ptr model_parallel = boost::static_pointer_cast<SampleConsensusModelParallelPlane<PointT>>(model_);
-        if (axis_ != Eigen::Vector3f::Zero() && model_parallel->getAxis() != axis_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
-            model_parallel->setAxis(axis_);
-        }
-        if (eps_angle_ != 0.0 && model_parallel->getEpsAngle() != eps_angle_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
-            model_parallel->setEpsAngle(eps_angle_);
-        }
-        break;
-    }
+    // case SACMODEL_LINE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_LINE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelLine<PointT>(input_, *indices_, random_));
+    //     break;
+    // }
+    // case SACMODEL_STICK:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_STICK\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelStick<PointT>(input_, *indices_));
+    //     double min_radius, max_radius;
+    //     model_->getRadiusLimits(min_radius, max_radius);
+    //     if (radius_min_ != min_radius && radius_max_ != max_radius)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
+    //         model_->setRadiusLimits(radius_min_, radius_max_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_CIRCLE2D:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CIRCLE2D\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelCircle2D<PointT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelCircle2D<PointT>::Ptr model_circle = boost::static_pointer_cast<SampleConsensusModelCircle2D<PointT>>(model_);
+    //     double min_radius, max_radius;
+    //     model_circle->getRadiusLimits(min_radius, max_radius);
+    //     if (radius_min_ != min_radius && radius_max_ != max_radius)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
+    //         model_circle->setRadiusLimits(radius_min_, radius_max_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_CIRCLE3D:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CIRCLE3D\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelCircle3D<PointT>(input_, *indices_));
+    //     typename SampleConsensusModelCircle3D<PointT>::Ptr model_circle3d = boost::static_pointer_cast<SampleConsensusModelCircle3D<PointT>>(model_);
+    //     double min_radius, max_radius;
+    //     model_circle3d->getRadiusLimits(min_radius, max_radius);
+    //     if (radius_min_ != min_radius && radius_max_ != max_radius)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
+    //         model_circle3d->setRadiusLimits(radius_min_, radius_max_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_SPHERE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_SPHERE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelSphere<PointT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelSphere<PointT>::Ptr model_sphere = boost::static_pointer_cast<SampleConsensusModelSphere<PointT>>(model_);
+    //     double min_radius, max_radius;
+    //     model_sphere->getRadiusLimits(min_radius, max_radius);
+    //     if (radius_min_ != min_radius && radius_max_ != max_radius)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
+    //         model_sphere->setRadiusLimits(radius_min_, radius_max_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_PARALLEL_LINE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_PARALLEL_LINE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelParallelLine<PointT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelParallelLine<PointT>::Ptr model_parallel = boost::static_pointer_cast<SampleConsensusModelParallelLine<PointT>>(model_);
+    //     if (axis_ != Eigen::Vector3f::Zero() && model_parallel->getAxis() != axis_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
+    //         model_parallel->setAxis(axis_);
+    //     }
+    //     if (eps_angle_ != 0.0 && model_parallel->getEpsAngle() != eps_angle_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
+    //         model_parallel->setEpsAngle(eps_angle_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_PERPENDICULAR_PLANE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_PERPENDICULAR_PLANE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelPerpendicularPlane<PointT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelPerpendicularPlane<PointT>::Ptr model_perpendicular = boost::static_pointer_cast<SampleConsensusModelPerpendicularPlane<PointT>>(model_);
+    //     if (axis_ != Eigen::Vector3f::Zero() && model_perpendicular->getAxis() != axis_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
+    //         model_perpendicular->setAxis(axis_);
+    //     }
+    //     if (eps_angle_ != 0.0 && model_perpendicular->getEpsAngle() != eps_angle_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
+    //         model_perpendicular->setEpsAngle(eps_angle_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_PARALLEL_PLANE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_PARALLEL_PLANE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelParallelPlane<PointT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelParallelPlane<PointT>::Ptr model_parallel = boost::static_pointer_cast<SampleConsensusModelParallelPlane<PointT>>(model_);
+    //     if (axis_ != Eigen::Vector3f::Zero() && model_parallel->getAxis() != axis_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
+    //         model_parallel->setAxis(axis_);
+    //     }
+    //     if (eps_angle_ != 0.0 && model_parallel->getEpsAngle() != eps_angle_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
+    //         model_parallel->setEpsAngle(eps_angle_);
+    //     }
+    //     break;
+    // }
     default:
     {
         PCL_ERROR("[pcl::%s::initSACModel] No valid model given!\n", getClassName().c_str());
@@ -343,136 +359,136 @@ bool pcl::SACSegmentationFromNormals<PointT, PointNT>::initSACModel(const int mo
     // Build the model
     switch (model_type)
     {
-    case SACMODEL_CYLINDER:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CYLINDER\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelCylinder<PointT, PointNT>(input_, *indices_, random_));
-        typename SampleConsensusModelCylinder<PointT, PointNT>::Ptr model_cylinder = boost::static_pointer_cast<SampleConsensusModelCylinder<PointT, PointNT>>(model_);
+    // case SACMODEL_CYLINDER:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CYLINDER\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelCylinder<PointT, PointNT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelCylinder<PointT, PointNT>::Ptr model_cylinder = boost::static_pointer_cast<SampleConsensusModelCylinder<PointT, PointNT>>(model_);
 
-        // Set the input normals
-        model_cylinder->setInputNormals(normals_);
-        double min_radius, max_radius;
-        model_cylinder->getRadiusLimits(min_radius, max_radius);
-        if (radius_min_ != min_radius && radius_max_ != max_radius)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
-            model_cylinder->setRadiusLimits(radius_min_, radius_max_);
-        }
-        if (distance_weight_ != model_cylinder->getNormalDistanceWeight())
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
-            model_cylinder->setNormalDistanceWeight(distance_weight_);
-        }
-        if (axis_ != Eigen::Vector3f::Zero() && model_cylinder->getAxis() != axis_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
-            model_cylinder->setAxis(axis_);
-        }
-        if (eps_angle_ != 0.0 && model_cylinder->getEpsAngle() != eps_angle_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
-            model_cylinder->setEpsAngle(eps_angle_);
-        }
-        break;
-    }
-    case SACMODEL_NORMAL_PLANE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_NORMAL_PLANE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelNormalPlane<PointT, PointNT>(input_, *indices_, random_));
-        typename SampleConsensusModelNormalPlane<PointT, PointNT>::Ptr model_normals = boost::static_pointer_cast<SampleConsensusModelNormalPlane<PointT, PointNT>>(model_);
-        // Set the input normals
-        model_normals->setInputNormals(normals_);
-        if (distance_weight_ != model_normals->getNormalDistanceWeight())
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
-            model_normals->setNormalDistanceWeight(distance_weight_);
-        }
-        break;
-    }
-    case SACMODEL_NORMAL_PARALLEL_PLANE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_NORMAL_PARALLEL_PLANE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelNormalParallelPlane<PointT, PointNT>(input_, *indices_, random_));
-        typename SampleConsensusModelNormalParallelPlane<PointT, PointNT>::Ptr model_normals = boost::static_pointer_cast<SampleConsensusModelNormalParallelPlane<PointT, PointNT>>(model_);
-        // Set the input normals
-        model_normals->setInputNormals(normals_);
-        if (distance_weight_ != model_normals->getNormalDistanceWeight())
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
-            model_normals->setNormalDistanceWeight(distance_weight_);
-        }
-        if (distance_from_origin_ != model_normals->getDistanceFromOrigin())
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the distance to origin to %f\n", getClassName().c_str(), distance_from_origin_);
-            model_normals->setDistanceFromOrigin(distance_from_origin_);
-        }
-        if (axis_ != Eigen::Vector3f::Zero() && model_normals->getAxis() != axis_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
-            model_normals->setAxis(axis_);
-        }
-        if (eps_angle_ != 0.0 && model_normals->getEpsAngle() != eps_angle_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
-            model_normals->setEpsAngle(eps_angle_);
-        }
-        break;
-    }
-    case SACMODEL_CONE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CONE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelCone<PointT, PointNT>(input_, *indices_, random_));
-        typename SampleConsensusModelCone<PointT, PointNT>::Ptr model_cone = boost::static_pointer_cast<SampleConsensusModelCone<PointT, PointNT>>(model_);
+    //     // Set the input normals
+    //     model_cylinder->setInputNormals(normals_);
+    //     double min_radius, max_radius;
+    //     model_cylinder->getRadiusLimits(min_radius, max_radius);
+    //     if (radius_min_ != min_radius && radius_max_ != max_radius)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
+    //         model_cylinder->setRadiusLimits(radius_min_, radius_max_);
+    //     }
+    //     if (distance_weight_ != model_cylinder->getNormalDistanceWeight())
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
+    //         model_cylinder->setNormalDistanceWeight(distance_weight_);
+    //     }
+    //     if (axis_ != Eigen::Vector3f::Zero() && model_cylinder->getAxis() != axis_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
+    //         model_cylinder->setAxis(axis_);
+    //     }
+    //     if (eps_angle_ != 0.0 && model_cylinder->getEpsAngle() != eps_angle_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
+    //         model_cylinder->setEpsAngle(eps_angle_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_NORMAL_PLANE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_NORMAL_PLANE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelNormalPlane<PointT, PointNT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelNormalPlane<PointT, PointNT>::Ptr model_normals = boost::static_pointer_cast<SampleConsensusModelNormalPlane<PointT, PointNT>>(model_);
+    //     // Set the input normals
+    //     model_normals->setInputNormals(normals_);
+    //     if (distance_weight_ != model_normals->getNormalDistanceWeight())
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
+    //         model_normals->setNormalDistanceWeight(distance_weight_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_NORMAL_PARALLEL_PLANE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_NORMAL_PARALLEL_PLANE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelNormalParallelPlane<PointT, PointNT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelNormalParallelPlane<PointT, PointNT>::Ptr model_normals = boost::static_pointer_cast<SampleConsensusModelNormalParallelPlane<PointT, PointNT>>(model_);
+    //     // Set the input normals
+    //     model_normals->setInputNormals(normals_);
+    //     if (distance_weight_ != model_normals->getNormalDistanceWeight())
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
+    //         model_normals->setNormalDistanceWeight(distance_weight_);
+    //     }
+    //     if (distance_from_origin_ != model_normals->getDistanceFromOrigin())
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the distance to origin to %f\n", getClassName().c_str(), distance_from_origin_);
+    //         model_normals->setDistanceFromOrigin(distance_from_origin_);
+    //     }
+    //     if (axis_ != Eigen::Vector3f::Zero() && model_normals->getAxis() != axis_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
+    //         model_normals->setAxis(axis_);
+    //     }
+    //     if (eps_angle_ != 0.0 && model_normals->getEpsAngle() != eps_angle_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
+    //         model_normals->setEpsAngle(eps_angle_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_CONE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CONE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelCone<PointT, PointNT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelCone<PointT, PointNT>::Ptr model_cone = boost::static_pointer_cast<SampleConsensusModelCone<PointT, PointNT>>(model_);
 
-        // Set the input normals
-        model_cone->setInputNormals(normals_);
-        double min_angle, max_angle;
-        model_cone->getMinMaxOpeningAngle(min_angle, max_angle);
-        if (min_angle_ != min_angle && max_angle_ != max_angle)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting minimum and maximum opening angle to %f and %f \n", getClassName().c_str(), min_angle_, max_angle_);
-            model_cone->setMinMaxOpeningAngle(min_angle_, max_angle_);
-        }
+    //     // Set the input normals
+    //     model_cone->setInputNormals(normals_);
+    //     double min_angle, max_angle;
+    //     model_cone->getMinMaxOpeningAngle(min_angle, max_angle);
+    //     if (min_angle_ != min_angle && max_angle_ != max_angle)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting minimum and maximum opening angle to %f and %f \n", getClassName().c_str(), min_angle_, max_angle_);
+    //         model_cone->setMinMaxOpeningAngle(min_angle_, max_angle_);
+    //     }
 
-        if (distance_weight_ != model_cone->getNormalDistanceWeight())
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
-            model_cone->setNormalDistanceWeight(distance_weight_);
-        }
-        if (axis_ != Eigen::Vector3f::Zero() && model_cone->getAxis() != axis_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
-            model_cone->setAxis(axis_);
-        }
-        if (eps_angle_ != 0.0 && model_cone->getEpsAngle() != eps_angle_)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
-            model_cone->setEpsAngle(eps_angle_);
-        }
-        break;
-    }
-    case SACMODEL_NORMAL_SPHERE:
-    {
-        PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_NORMAL_SPHERE\n", getClassName().c_str());
-        model_.reset(new SampleConsensusModelNormalSphere<PointT, PointNT>(input_, *indices_, random_));
-        typename SampleConsensusModelNormalSphere<PointT, PointNT>::Ptr model_normals_sphere = boost::static_pointer_cast<SampleConsensusModelNormalSphere<PointT, PointNT>>(model_);
-        // Set the input normals
-        model_normals_sphere->setInputNormals(normals_);
-        double min_radius, max_radius;
-        model_normals_sphere->getRadiusLimits(min_radius, max_radius);
-        if (radius_min_ != min_radius && radius_max_ != max_radius)
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
-            model_normals_sphere->setRadiusLimits(radius_min_, radius_max_);
-        }
+    //     if (distance_weight_ != model_cone->getNormalDistanceWeight())
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
+    //         model_cone->setNormalDistanceWeight(distance_weight_);
+    //     }
+    //     if (axis_ != Eigen::Vector3f::Zero() && model_cone->getAxis() != axis_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the axis to %f, %f, %f\n", getClassName().c_str(), axis_[0], axis_[1], axis_[2]);
+    //         model_cone->setAxis(axis_);
+    //     }
+    //     if (eps_angle_ != 0.0 && model_cone->getEpsAngle() != eps_angle_)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting the epsilon angle to %f (%f degrees)\n", getClassName().c_str(), eps_angle_, eps_angle_ * 180.0 / M_PI);
+    //         model_cone->setEpsAngle(eps_angle_);
+    //     }
+    //     break;
+    // }
+    // case SACMODEL_NORMAL_SPHERE:
+    // {
+    //     PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_NORMAL_SPHERE\n", getClassName().c_str());
+    //     model_.reset(new SampleConsensusModelNormalSphere<PointT, PointNT>(input_, *indices_, random_));
+    //     typename SampleConsensusModelNormalSphere<PointT, PointNT>::Ptr model_normals_sphere = boost::static_pointer_cast<SampleConsensusModelNormalSphere<PointT, PointNT>>(model_);
+    //     // Set the input normals
+    //     model_normals_sphere->setInputNormals(normals_);
+    //     double min_radius, max_radius;
+    //     model_normals_sphere->getRadiusLimits(min_radius, max_radius);
+    //     if (radius_min_ != min_radius && radius_max_ != max_radius)
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting radius limits to %f/%f\n", getClassName().c_str(), radius_min_, radius_max_);
+    //         model_normals_sphere->setRadiusLimits(radius_min_, radius_max_);
+    //     }
 
-        if (distance_weight_ != model_normals_sphere->getNormalDistanceWeight())
-        {
-            PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
-            model_normals_sphere->setNormalDistanceWeight(distance_weight_);
-        }
-        break;
-    }
+    //     if (distance_weight_ != model_normals_sphere->getNormalDistanceWeight())
+    //     {
+    //         PCL_DEBUG("[pcl::%s::initSACModel] Setting normal distance weight to %f\n", getClassName().c_str(), distance_weight_);
+    //         model_normals_sphere->setNormalDistanceWeight(distance_weight_);
+    //     }
+    //     break;
+    // }
     // If nothing else, try SACSegmentation
     default:
     {
