@@ -192,10 +192,11 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     sac_model_->resetIndices(new_indices, *temp);
 
     iterations_ = 0;
-    n_best_inliers_count = 0;
+    std::size_t n_best_inliers_count2 = 0;
     k = std::numeric_limits<double>::max();
 
-    skipped_count = 0;
+    std::size_t n_inliers_count2;
+    unsigned skipped_count2 = 0;
 
     while(true)
     {
@@ -209,35 +210,35 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
             //++iterations_;
             unsigned skipped_count_tmp;
 
-            skipped_count_tmp = ++skipped_count;
+            skipped_count_tmp = ++skipped_count2;
             if (skipped_count_tmp < max_skip)
                 continue;
             else
                 break;
         }
 
-        n_inliers_count = sac_model_->countWithinDistanceSecond(model_coefficients, threshold_, new_indices, *temp); // This functions has to be thread-safe. Most work is done here
+        n_inliers_count2 = sac_model_->countWithinDistanceSecond(model_coefficients, threshold_, new_indices, *temp); // This functions has to be thread-safe. Most work is done here
 
         std::size_t n_best_inliers_count_tmp2;
 
-        n_best_inliers_count_tmp2 = n_best_inliers_count;
+        n_best_inliers_count_tmp2 = n_best_inliers_count2;
 
-        if (n_inliers_count > n_best_inliers_count_tmp2) // This condition is false most of the time, and the critical region is not entered, hopefully leading to more efficient concurrency
+        if (n_inliers_count2 > n_best_inliers_count_tmp2) // This condition is false most of the time, and the critical region is not entered, hopefully leading to more efficient concurrency
         {
 
             {
                 // Better match ?
-                if (n_inliers_count > n_best_inliers_count)
+                if (n_inliers_count2 > n_best_inliers_count2)
                 {
-                    n_best_inliers_count = n_inliers_count; // This write and the previous read of n_best_inliers_count must be consecutive and must not be interrupted!
-                    n_best_inliers_count_tmp2 = n_best_inliers_count;
+                    n_best_inliers_count2 = n_inliers_count2; // This write and the previous read of n_best_inliers_count must be consecutive and must not be interrupted!
+                    n_best_inliers_count_tmp2 = n_best_inliers_count2;
 
                     // Save the current model/inlier/coefficients selection as being the best so far
                     model_ = selection;
                     model_coefficients_ = model_coefficients;
 
                     // Compute the k parameter (k=std::log(z)/std::log(1-w^n))
-                    const double w2 = static_cast<double>(n_best_inliers_count) * one_over_indices;
+                    const double w2 = static_cast<double>(n_best_inliers_count2) * one_over_indices;
                     double p_no_outliers = 1.0 - std::pow(w2, static_cast<double>(selection.size()));
                     p_no_outliers = (std::max)(std::numeric_limits<double>::epsilon(), p_no_outliers);       // Avoid division by -Inf
                     p_no_outliers = (std::min)(1.0 - std::numeric_limits<double>::epsilon(), p_no_outliers); // Avoid division by 0.

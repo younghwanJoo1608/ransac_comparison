@@ -89,7 +89,7 @@ namespace pcl
             : SampleConsensusModelPlane<PointT>(cloud, random), axis_(Eigen::Vector3f::Zero()), eps_angle_(0.0), sin_angle_(-1.0)
         {
             model_name_ = "SampleConsensusModelCuboid";
-            sample_size_ = 6;
+            sample_size_ = 3;
             model_size_ = 4;
         }
 
@@ -104,7 +104,7 @@ namespace pcl
             : SampleConsensusModelPlane<PointT>(cloud, indices, random), axis_(Eigen::Vector3f::Zero()), eps_angle_(0.0), sin_angle_(-1.0)
         {
             model_name_ = "SampleConsensusModelCuboid";
-            sample_size_ = 6;
+            sample_size_ = 3;
             model_size_ = 4;
         }
 

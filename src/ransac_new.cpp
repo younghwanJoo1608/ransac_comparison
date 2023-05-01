@@ -60,6 +60,8 @@ int main(int argc, char **argv)
     double dur = 0;
     for (int i = 0; i < 10; i++)
     {
+        std::cout << "Start" << std::endl;
+
         double start = ros::Time::now().toNSec();
         std::vector<pcl::ModelCoefficients> plane_eq_model;
 
