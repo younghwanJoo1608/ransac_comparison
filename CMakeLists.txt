@@ -57,7 +57,7 @@ target_link_libraries(pointcloud_visualizer
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
+#add_definitions(${PCL_DEFINITIONS})
 
 add_executable(ransac_pcl
   src/ransac_pcl.cpp

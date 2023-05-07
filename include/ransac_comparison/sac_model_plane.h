@@ -40,6 +40,13 @@
 
 #pragma once
 
+#ifdef __SSE__
+#include <xmmintrin.h> // for __m128
+#endif                 // ifdef __SSE__
+#ifdef __AVX__
+#include <immintrin.h> // for __m256
+#endif                 // ifdef __AVX__
+
 #include "sac_model.h"
 #include <pcl/sample_consensus/model_types.h>
 
@@ -193,12 +200,11 @@ namespace pcl
                                  Eigen::VectorXf &model_coefficients) const override;
         bool
         computeModelCoefficientsSecond(const std::vector<int> &samples,
-                                 Eigen::VectorXf &model_coefficients,
-                                 PointCloud &cloud) const override;
+                                 Eigen::VectorXf &model_coefficients) const override;
         bool
         computeModelCoefficientsThird(const std::vector<int> &samples,
-                                      Eigen::VectorXf &model_coefficients,
-                                          PointCloud &cloud) const override;
+                                      std::vector<Eigen::VectorXf> &model_coefficients_array,
+                                      Eigen::VectorXf &model_coefficients) const override;
         /** \brief Compute all distances from the cloud data to a given plane model.
          * \param[in] model_coefficients the coefficients of a plane model that we need to compute distances to
          * \param[out] distances the resultant estimated distances
@@ -219,9 +225,7 @@ namespace pcl
         void
         selectWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
                                    const double threshold,
-                                   std::vector<int> &inliers,
-                                   Indices &new_indices,
-                                   PointCloud &cloud) override;
+                                   std::vector<int> &inliers) override;
         /** \brief Count all the points which respect the given model coefficients as inliers.
          *
          * \param[in] model_coefficients the coefficients of a model that we need to compute distances to
@@ -233,9 +237,7 @@ namespace pcl
                             const double threshold) const override;
         std::size_t
         countWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
-                                  const double threshold,
-                                  Indices &new_indices,
-                                  PointCloud &cloud) const override;
+                                  const double threshold) const override;
 
         /** \brief Recompute the plane coefficients using the given inlier set and return them to the user.
          * @note: these are the coefficients of the plane model after refinement (e.g. after SVD)
@@ -279,7 +281,7 @@ namespace pcl
         using SampleConsensusModel<PointT>::model_size_;
 
         void
-        filterInliers(Indices &inliers, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered, bool isfirst) override;
+        filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst) override;
         void
         resetIndices(Indices &new_inliers, PointCloud &filtered) override;
 

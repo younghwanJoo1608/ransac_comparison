@@ -82,7 +82,7 @@ namespace pcl
          * \param[in] random if true set the random seed to the current time, else set to 12345 (default: false)
          */
         SampleConsensusModel(bool random = false)
-            : input_(), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
+            : input_(), temp_(), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
         {
             // Create a random number generator object
             if (random)
@@ -99,7 +99,7 @@ namespace pcl
          * \param[in] random if true set the random seed to the current time, else set to 12345 (default: false)
          */
         SampleConsensusModel(const PointCloudConstPtr &cloud, bool random = false)
-            : input_(), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
+            : input_(), temp_(), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
         {
             if (random)
                 rng_alg_.seed(static_cast<unsigned>(std::time(nullptr)));
@@ -121,7 +121,7 @@ namespace pcl
         SampleConsensusModel(const PointCloudConstPtr &cloud,
                              const std::vector<int> &indices,
                              bool random = false)
-            : input_(cloud), indices_(new std::vector<int>(indices)), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
+            : input_(cloud), temp_(), indices_(new std::vector<int>(indices)), new_indices_(new std::vector<int>()), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
         {
             if (random)
                 rng_alg_.seed(static_cast<unsigned>(std::time(nullptr)));
@@ -182,13 +182,13 @@ namespace pcl
             samples.clear();
         }
         virtual void
-        getSamplesSecond(int &iterations, std::vector<int> &samples, Indices &new_indices, PointCloud& temp)
+        getSamplesSecond(int &iterations, std::vector<int> &samples, Indices &new_indices)
         {
             // We're assuming that indices_ have already been set in the constructor
-            if (temp.size() < getSampleSize())
+            if (temp_->size() < getSampleSize())
             {
                 PCL_ERROR("[pcl::SampleConsensusModel::getSamples] Can not select %lu unique points out of %lu!\n",
-                          samples.size(), temp.size());
+                          samples.size(), temp_->size());
                 // one of these will make it stop :)
                 samples.clear();
                 iterations = INT_MAX - 1;
@@ -202,7 +202,6 @@ namespace pcl
             {
                 std::size_t sample_size = samples.size();
                 std::size_t index_size = shuffled_indices_.size();
-                std::cout << sample_size << ", " << new_indices.size() << std::endl;
 
                 for (std::size_t i = 0; i < sample_size; ++i)
                     std::swap(shuffled_indices_[i], shuffled_indices_[i + (rnd() % (index_size - i))]);
@@ -232,12 +231,11 @@ namespace pcl
                                  Eigen::VectorXf &model_coefficients) const = 0;
         virtual bool
         computeModelCoefficientsSecond(const std::vector<int> &samples,
-                                       Eigen::VectorXf &model_coefficients,
-                                       PointCloud &cloud) const = 0;
+                                       Eigen::VectorXf &model_coefficients) const = 0;
         virtual bool
         computeModelCoefficientsThird(const std::vector<int> &samples,
-                                      Eigen::VectorXf &model_coefficients,
-                                          PointCloud &cloud) const = 0;
+                                      std::vector<Eigen::VectorXf> &model_coefficients_array,
+                                      Eigen::VectorXf &model_coefficients) const = 0;
         /** \brief Recompute the model coefficients using the given inlier set
          * and return them to the user. Pure virtual.
          *
@@ -277,9 +275,7 @@ namespace pcl
         virtual void
         selectWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
                                    const double threshold,
-                                   std::vector<int> &inliers,
-                                   Indices &new_indices,
-                                   PointCloud &cloud) = 0;
+                                   std::vector<int> &inliers) = 0;
 
         /** \brief Count all the points which respect the given model
          * coefficients as inliers. Pure virtual.
@@ -295,12 +291,10 @@ namespace pcl
                             const double threshold) const = 0;
         virtual std::size_t
         countWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
-                                  const double threshold,
-                                  Indices &new_indices,
-                                  PointCloud &cloud) const = 0;
+                                  const double threshold) const = 0;
 
         virtual void
-        filterInliers(Indices &inliers, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered, bool isfirst) = 0;
+        filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst) = 0;
 
         virtual void
         resetIndices(Indices &new_inliers, PointCloud &filtered) = 0;
@@ -403,13 +397,18 @@ namespace pcl
         {
             return model_size_;
         }
-
+        void setTemp(PointCloudConstPtr temp)
+        {
+            std::cout << "A" << std::endl;
+            temp_.reset(new PointCloud(*temp));
+            std::cout << "B" << std::endl;
+        }
         /** \brief Set the minimum and maximum allowable radius limits for the
-         * model (applicable to models that estimate a radius)
-         * \param[in] min_radius the minimum radius model
-         * \param[in] max_radius the maximum radius model
-         * \todo change this to set limits on the entire model
-         */
+           * model (applicable to models that estimate a radius)
+           * \param[in] min_radius the minimum radius model
+           * \param[in] max_radius the maximum radius model
+           * \todo change this to set limits on the entire model
+           */
         inline void
         setRadiusLimits(const double &min_radius, const double &max_radius)
         {
@@ -573,7 +572,7 @@ namespace pcl
 
         /** \brief A pointer to the vector of point indices to use. */
         IndicesPtr indices_;
-
+        IndicesPtr new_indices_;
         /** The maximum number of samples to try until we get a good one */
         static const unsigned int max_sample_checks_ = 1000;
 

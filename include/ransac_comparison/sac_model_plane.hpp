@@ -49,7 +49,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 template <typename PointT>
-void pcl::SampleConsensusModelPlane<PointT>::filterInliers(Indices &inliers, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered, bool isfirst)
+void pcl::SampleConsensusModelPlane<PointT>::filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst)
 {
     return;
 }
@@ -119,15 +119,14 @@ bool pcl::SampleConsensusModelPlane<PointT>::computeModelCoefficients(
 }
 template <typename PointT>
 bool pcl::SampleConsensusModelPlane<PointT>::computeModelCoefficientsSecond(const std::vector<int> &samples,
-                                                                            Eigen::VectorXf &model_coefficients,
-                                                                            PointCloud &cloud) const
+                                                                            Eigen::VectorXf &model_coefficients) const
 {
     return (true);
 }
 template <typename PointT>
 bool pcl::SampleConsensusModelPlane<PointT>::computeModelCoefficientsThird(const std::vector<int> &samples,
-                                   Eigen::VectorXf &model_coefficients,
-                                       PointCloud &cloud) const
+                                                                           std::vector<Eigen::VectorXf> &model_coefficients_array,
+                                                                           Eigen::VectorXf &model_coefficients) const
 {
     return (true);
 }
@@ -203,7 +202,7 @@ void pcl::SampleConsensusModelPlane<PointT>::selectWithinDistance(
 }
 template <typename PointT>
 void pcl::SampleConsensusModelPlane<PointT>::selectWithinDistanceSecond(
-    const Eigen::VectorXf &model_coefficients, const double threshold, std::vector<int> &inliers, Indices &new_indices, PointCloud &cloud)
+    const Eigen::VectorXf &model_coefficients, const double threshold, std::vector<int> &inliers)
 {
     return;
 }
@@ -239,7 +238,7 @@ pcl::SampleConsensusModelPlane<PointT>::countWithinDistance(
 template <typename PointT>
 std::size_t
 pcl::SampleConsensusModelPlane<PointT>::countWithinDistanceSecond(
-    const Eigen::VectorXf &model_coefficients, const double threshold, Indices &new_indices, PointCloud &cloud) const
+    const Eigen::VectorXf &model_coefficients, const double threshold) const
 {
     return 0;
 }

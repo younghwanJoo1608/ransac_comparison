@@ -43,6 +43,8 @@
 //#include <pcl/sample_consensus/sac_model_plane.h>
 #include "sac_model_plane.h"
 #include <pcl/filters/extract_indices.h>
+#include <pmmintrin.h>
+#include <immintrin.h>
 
 namespace pcl
 {
@@ -71,6 +73,7 @@ namespace pcl
         using SampleConsensusModel<PointT>::input_;
         using SampleConsensusModel<PointT>::temp_;
         using SampleConsensusModel<PointT>::indices_;
+        using SampleConsensusModel<PointT>::new_indices_;
         using SampleConsensusModel<PointT>::error_sqr_dists_;
 
         using PointCloud = typename SampleConsensusModelCuboid<PointT>::PointCloud;
@@ -168,6 +171,10 @@ namespace pcl
         inline pcl::SacModel
         getModelType() const override { return (SACMODEL_PLANE); }
 
+        void setTemp(PointCloudConstPtr temp){
+            temp_.reset(new PointCloud(*temp));
+        }
+
     protected:
         using SampleConsensusModel<PointT>::sample_size_;
         using SampleConsensusModel<PointT>::model_size_;
@@ -178,29 +185,33 @@ namespace pcl
         bool
         isModelValid(const Eigen::VectorXf &model_coefficients) const override;
 
+        inline __m256 dist8(const std::size_t i, const __m256 &a_vec, const __m256 &b_vec, const __m256 &c_vec, const __m256 &d_vec, const __m256 &abs_help, const PointCloudConstPtr &input) const;
+
+        void filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst) override;
         void
-        filterInliers(Indices &inliers, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered, bool isfirst) override;
-        void
-        resetIndices(Indices &new_inliers, PointCloud &filtered) override;
+        resetIndices(Indices &new_indices, PointCloud &filtered) override;
         bool
         computeModelCoefficientsSecond(const std::vector<int> &samples,
-                                       Eigen::VectorXf &model_coefficients,
-                                       PointCloud &cloud) const override;
+                                       Eigen::VectorXf &model_coefficients) const override;
         bool
         computeModelCoefficientsThird(const std::vector<int> &samples,
-                                      Eigen::VectorXf &model_coefficients,
-                                      PointCloud &cloud) const override;
+                                      std::vector<Eigen::VectorXf> &model_coefficients_array,
+                                      Eigen::VectorXf &model_coefficients) const override;
+        std::size_t
+        countWithinDistanceAVX(const Eigen::VectorXf &model_coefficients,
+                               const double threshold, const PointCloudConstPtr &input, const IndicesPtr &indices,
+                               std::size_t i = 0) const;
+        std::size_t
+        countWithinDistanceStandard(const Eigen::VectorXf &model_coefficients,
+                                    const double threshold, const PointCloudConstPtr &input, const IndicesPtr &indices,
+                                    std::size_t i = 0) const;
         std::size_t
         countWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
-                                  const double threshold,
-                                  Indices &new_indices,
-                                  PointCloud &cloud) const override;
+                                  const double threshold) const override;
         void
         selectWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
                                    const double threshold,
-                                   std::vector<int> &inliers,
-                                   Indices &new_indices,
-                                   PointCloud &cloud) override;
+                                   std::vector<int> &inliers) override;
         /** \brief The axis along which we need to search for a plane perpendicular to. */
         Eigen::Vector3f axis_;
 
@@ -210,7 +221,7 @@ namespace pcl
         /** \brief The sine of the angle*/
         double sin_angle_;
 
-        PointCloudPtr filtered_pcd_;
+        //PointCloudPtr filtered_pcd_;
     };
 }
 

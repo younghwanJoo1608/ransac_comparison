@@ -77,7 +77,7 @@ namespace pcl
          * \param[in] model a Sample Consensus model
          */
         RandomSampleConsensus(const SampleConsensusModelPtr &model)
-            : SampleConsensus<PointT>(model)
+            : SampleConsensus<PointT>(model), temp_(new pcl::PointCloud<pcl::PointXYZ>())
         {
             // Maximum number of trials before we give up.
             max_iterations_ = 10000;
@@ -88,7 +88,7 @@ namespace pcl
          * \param[in] threshold distance to model threshold
          */
         RandomSampleConsensus(const SampleConsensusModelPtr &model, double threshold)
-            : SampleConsensus<PointT>(model, threshold)
+            : SampleConsensus<PointT>(model, threshold), temp_(new pcl::PointCloud<pcl::PointXYZ>())
         {
             // Maximum number of trials before we give up.
             max_iterations_ = 10000;
@@ -99,6 +99,8 @@ namespace pcl
          */
         bool
         computeModel(int debug_verbosity_level = 0) override;
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr temp_;
     };
 }
 

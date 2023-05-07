@@ -102,6 +102,8 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
 
     if (!sac_->computeModel(0))
     {
+        std::cout << "Fail!" << std::endl;
+
         PCL_ERROR("[pcl::%s::segment] Error segmenting the model! No solution found.\n", getClassName().c_str());
         deinitCompute();
         inliers.indices.clear();
@@ -111,6 +113,7 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
         }
         return;
     }
+
     // Get the model inliers
     sac_->getInliers(inliers.indices);
     std::cout << "inlers : " << inliers.indices.size() << std::endl;
@@ -141,8 +144,10 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
     for (int i = 0; i < coeffs.size(); i++)
     {
         model_coefficients[i].values.resize(coeffs[i].size());
-        memcpy(&model_coefficients[i].values[0], &coeffs[i][0], coeffs[i].size() * sizeof(float));
+        memcpy(&(model_coefficients[i]).values[0], &coeffs[i][0], coeffs[i].size() * sizeof(float));
     }
+    std::cout << "Done!" << std::endl;
+
     deinitCompute();
 }
 
