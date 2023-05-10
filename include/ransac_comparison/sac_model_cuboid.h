@@ -112,7 +112,7 @@ namespace pcl
         }
 
         /** \brief Empty destructor */
-        ~SampleConsensusModelCuboid() {}
+        ~SampleConsensusModelCuboid() { std::cout << "out cuboud" << std::endl; }
 
         /** \brief Set the axis along which we need to search for a plane perpendicular to.
          * \param[in] ax the axis along which we need to search for a plane perpendicular to

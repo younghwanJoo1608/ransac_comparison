@@ -4,9 +4,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 # Get coefficient data
 
-P = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl_1.txt', sep="\t", header=None)
-Y = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl_2.txt', sep="\t", header=None)
-Z = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl_3.txt', sep="\t", header=None)
+X = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac1_filtered.txt', sep="\t", header=None)
+
+# X = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new.txt', sep="\t", header=None)
+# X = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new2.txt', sep="\t", header=None)
+# = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new3.txt', sep="\t", header=None)
 
 # X = Y[Y[3]<0.15]
 # X = X[X[3]<0.45]
@@ -20,17 +22,17 @@ Z = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl_3.txt
 # Q = Q[Q[3]>0.35]
 # X = pd.concat([X, Q])
 
-X1 = P[P[3] < 0.25]
-X2 = Y[Y[3] < 0.25]
-X3 = Z[Z[3] < 0.25]
+# X1 = P[P[3] < 0.25]
+# X2 = Y[Y[3] < 0.25]
+# X3 = Z[Z[3] < 0.25]
 
 # X1 = X1[X1[3] < 0.35]
 # X2 = X2[X2[3] < 0.35]
 # X3 = X3[X3[3] < 0.35]
 
 
-X = pd.concat([X1, X2])
-X = pd.concat([X, X3])
+# X = pd.concat([X1, X2])
+# X = pd.concat([X, X3])
 
 # X.to_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac3_new_0.txt', sep = '\t')
 # X = pd.read_csv('/media/jyh/Extreme SSD/230321/3/ransac6_2.txt', sep="\t", header=None)

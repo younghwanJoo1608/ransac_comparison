@@ -191,7 +191,6 @@ bool pcl::SampleConsensusModelCuboid<PointT>::isModelValid(const Eigen::VectorXf
 template <typename PointT>
 void pcl::SampleConsensusModelCuboid<PointT>::filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst)
 {
-    
     pcl::PointIndices::Ptr inliers_ptr(new pcl::PointIndices());
     inliers_ptr->indices = inliers;
     // std::cout << "temp : " << temp_->size() << std::endl;

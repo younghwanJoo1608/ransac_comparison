@@ -53,9 +53,9 @@ int main(int argc, char **argv)
 
     // std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/pyransac_pcl.txt");
 
-    std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new.txt");
-    std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new2.txt");
-    std::ofstream outfile3("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new3.txt");
+    std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new_filtered.txt", ios::app);
+    std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new2_filtered.txt", ios::app);
+    std::ofstream outfile3("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new3_filtered.txt", ios::app);
 
     double dur = 0;
     for (int i = 0; i < 10; i++)
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
         pcl::SACSegmentation<pcl::PointXYZ> seg(true);
         seg.setOptimizeCoefficients(false);
         seg.setModelType(pcl::SACMODEL_PLANE);
-        seg.setMaxIterations(500);
+        // seg.setMaxIterations(500);
         std::cout << "model_type_: " << seg.getModelType() << std::endl;
 
         seg.setIsCuboid(true);
@@ -96,25 +96,28 @@ int main(int argc, char **argv)
         std::cout << "Total Duration : " << (end - start) / 1000000 << " ms" << std::endl;
         std::cout << plane_eq_model.size() << std::endl;
 
+        for (int j = 0; j < plane_eq_model.size(); j++)
+        {
+            if (plane_eq_model[j].values.at(3) < 0)
+            {
+                for (int k = 0; k < 4; k++)
+                {
+                    plane_eq_model[j].values.at(k) = -plane_eq_model[j].values.at(k);
+                }
+            }
+        }
+
+        std::sort(std::begin(plane_eq_model),
+                  std::end(plane_eq_model),
+                  [](const pcl::ModelCoefficients &a, const pcl::ModelCoefficients &b)
+                  { return a.values.at(3) > b.values.at(3); });
+
         outfile1 << plane_eq_model[0].values.at(0) << "\t" << plane_eq_model[0].values.at(1) << "\t" << plane_eq_model[0].values.at(2) << "\t" << plane_eq_model[0].values.at(3) << std::endl;
         outfile2 << plane_eq_model[1].values.at(0) << "\t" << plane_eq_model[1].values.at(1) << "\t" << plane_eq_model[1].values.at(2) << "\t" << plane_eq_model[1].values.at(3) << std::endl;
         outfile3 << plane_eq_model[2].values.at(0) << "\t" << plane_eq_model[2].values.at(1) << "\t" << plane_eq_model[2].values.at(2) << "\t" << plane_eq_model[2].values.at(3) << std::endl;
 
-        // for (int j = 0; j < plane_eqs.size(); j++)
-        // {
-        //     if (plane_eqs[j][3] < 0)
-        //     {
-        //         for (int k = 0; k < 4; k++)
-        //         {
-        //             plane_eqs[j][k] = -plane_eqs[j][k];
-        //         }
-        //     }
-        // }
 
-        // std::sort(std::begin(plane_eqs),
-        //           std::end(plane_eqs),
-        //           [](const Eigen::Vector4f &a, const Eigen::Vector4f &b)
-        //           { return a[3] > b[3]; });
+       
         // outfile1 << plane_eqs[0][0] << "\t" << plane_eqs[0][1] << "\t" << plane_eqs[0][2] << "\t" << plane_eqs[0][3] << std::endl;
         // outfile2 << plane_eqs[1][0] << "\t" << plane_eqs[1][1] << "\t" << plane_eqs[1][2] << "\t" << plane_eqs[1][3] << std::endl;
         // outfile3 << plane_eqs[2][0] << "\t" << plane_eqs[2][1] << "\t" << plane_eqs[2][2] << "\t" << plane_eqs[2][3] << std::endl;

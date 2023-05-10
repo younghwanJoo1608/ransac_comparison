@@ -42,20 +42,28 @@
 #define RANSAC_H_
 
 #include "ransac.h"
-#ifdef _OPENMP
+// #ifdef _OPENMP
 #include <omp.h>
-#endif
+// #endif
 
-#if defined _OPENMP && _OPENMP >= 201107 // We need OpenMP 3.1 for the atomic constructs
+// #if defined _OPENMP && _OPENMP >= 201107 // We need OpenMP 3.1 for the atomic constructs
+// #define OPENMP_AVAILABLE_RANSAC true
+// #else
+// #define OPENMP_AVAILABLE_RANSAC false
+// #endif
 #define OPENMP_AVAILABLE_RANSAC true
-#else
-#define OPENMP_AVAILABLE_RANSAC false
-#endif
+#include <ros/ros.h>
 
 //////////////////////////////////////////////////////////////////////////
 template <typename PointT>
 bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
 {
+    double sample_time = 0;
+    double compute_coeff_time = 0;
+    double count_time = 0;
+    double filter_time = 0;
+    double select_time = 0;
+
     std::cout << "ransac:computemodel" << std::endl;
     // Warn and exit if no threshold was set
     if (threshold_ == std::numeric_limits<double>::max())
@@ -84,7 +92,8 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     {
         // Parallelization desired, but not available
         PCL_WARN("[pcl::RandomSampleConsensus::computeModel] Parallelization is requested, but OpenMP 3.1 is not available! Continuing without parallelization.\n");
-        threads = -1;
+        //threads = -1;
+        threads = omp_get_num_procs();
     }
 
     PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Computing not parallel.\n");
@@ -95,15 +104,17 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
         // Get X samples which satisfy the model criteria
 
         {
+            double sample_start = ros::Time::now().toNSec();
             sac_model_->getSamples(iterations_, selection); // The random number generator used when choosing the samples should not be called in parallel
+            double sample_end = ros::Time::now().toNSec();
+            sample_time += (sample_end - sample_start) / 1000000;
         }
-
         if (selection.empty())
         {
             PCL_ERROR("[pcl::RandomSampleConsensus::computeModel] No samples could be selected!\n");
             break;
         }
-
+        double coff_start = ros::Time::now().toNSec();
         // Search for inliers in the point cloud for the current plane model M
         if (!sac_model_->computeModelCoefficients(selection, model_coefficients)) // This function has to be thread-safe
         {
@@ -116,21 +127,23 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
             else
                 break;
         }
-
+        double coeff_end = ros::Time::now().toNSec();
+        compute_coeff_time += (coeff_end - coff_start) / 1000000;
         // Select the inliers that are within threshold_ from the model
         // sac_model_->selectWithinDistance (model_coefficients, threshold_, inliers);
         // if (inliers.empty () && k > 1.0)
         //  continue;
 
+        double count_start = ros::Time::now().toNSec();
         n_inliers_count = sac_model_->countWithinDistance(model_coefficients, threshold_); // This functions has to be thread-safe. Most work is done here
-
+        double count_end = ros::Time::now().toNSec();
+        count_time += (count_end - count_start) / 1000000;
         std::size_t n_best_inliers_count_tmp;
 
         n_best_inliers_count_tmp = n_best_inliers_count;
 
         if (n_inliers_count > n_best_inliers_count_tmp) // This condition is false most of the time, and the critical region is not entered, hopefully leading to more efficient concurrency
         {
-
             {
                 // Better match ?
                 if (n_inliers_count > n_best_inliers_count)
@@ -162,7 +175,10 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
         PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Trial %d out of %f: %u inliers (best is: %u so far).\n", iterations_tmp, k_tmp, n_inliers_count, n_best_inliers_count_tmp);
 
         if (iterations_tmp > k_tmp)
+        {
+            PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] RANSAC reached the k param.\n");
             break;
+        }
         if (iterations_tmp > max_iterations_)
         {
             PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] RANSAC reached the maximum number of trials.\n");
@@ -180,32 +196,42 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     }
 
     // Get the set of inliers that correspond to the best model found so far
+    double select_start = ros::Time::now().toNSec();
     sac_model_->selectWithinDistance(model_coefficients_, threshold_, inliers_);
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>);
-
-    sac_model_->filterInliers(inliers_, temp, true);
+    double select_end = ros::Time::now().toNSec();
+    select_time += (select_end - select_start) / 1000000;
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>);
+    double filter_start = ros::Time::now().toNSec();
+    sac_model_->filterInliers(inliers_, temp_, true);
+    double filter_end = ros::Time::now().toNSec();
+    filter_time += (filter_end - filter_start) / 1000000;
     model_coefficients_vector_.push_back(model_coefficients_);
 
     // First plane found. now second plane.
-    std::vector<int> new_indices;
-    sac_model_->resetIndices(new_indices, *temp);
 
+    std::vector<int> new_indices;
+    sac_model_->resetIndices(new_indices, *temp_);
+    sac_model_->setTemp(temp_);
+
+    selection.clear();
     iterations_ = 0;
     std::size_t n_best_inliers_count2 = 0;
     k = std::numeric_limits<double>::max();
+    const double one_over_indices2 = 1.0 / static_cast<double>(new_indices.size());
 
     std::size_t n_inliers_count2;
     unsigned skipped_count2 = 0;
 
+
     while(true)
     {
+
         {
-            sac_model_->getSamplesSecond(iterations_, selection, new_indices, *temp); // The random number generator used when choosing the samples should not be called in parallel
+            sac_model_->getSamplesSecond(iterations_, selection, new_indices); // The random number generator used when choosing the samples should not be called in parallel
         }
 
         // Search for inliers in the point cloud for the current plane model M
-        if (!sac_model_->computeModelCoefficientsSecond(selection, model_coefficients, *temp)) // This function has to be thread-safe
+        if (!sac_model_->computeModelCoefficientsSecond(selection, model_coefficients)) // This function has to be thread-safe
         {
             //++iterations_;
             unsigned skipped_count_tmp;
@@ -217,7 +243,7 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
                 break;
         }
 
-        n_inliers_count2 = sac_model_->countWithinDistanceSecond(model_coefficients, threshold_, new_indices, *temp); // This functions has to be thread-safe. Most work is done here
+        n_inliers_count2 = sac_model_->countWithinDistanceSecond(model_coefficients, threshold_); // This functions has to be thread-safe. Most work is done here
 
         std::size_t n_best_inliers_count_tmp2;
 
@@ -238,8 +264,9 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
                     model_coefficients_ = model_coefficients;
 
                     // Compute the k parameter (k=std::log(z)/std::log(1-w^n))
-                    const double w2 = static_cast<double>(n_best_inliers_count2) * one_over_indices;
+                    const double w2 = static_cast<double>(n_best_inliers_count2) * one_over_indices2;
                     double p_no_outliers = 1.0 - std::pow(w2, static_cast<double>(selection.size()));
+                    // double p_no_outliers = 1.0 - std::pow(w2, static_cast<double>(2));
                     p_no_outliers = (std::max)(std::numeric_limits<double>::epsilon(), p_no_outliers);       // Avoid division by -Inf
                     p_no_outliers = (std::min)(1.0 - std::numeric_limits<double>::epsilon(), p_no_outliers); // Avoid division by 0.
                     k = log_probability / std::log(p_no_outliers);
@@ -254,10 +281,13 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
 
         k_tmp2 = k;
 
-        PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Trial %d out of %f: %u inliers (best is: %u so far).\n", iterations_tmp2, k_tmp2, n_inliers_count, n_best_inliers_count_tmp2);
+        PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Trial %d out of %f: %u inliers (best is: %u so far).\n", iterations_tmp2, k_tmp2, n_inliers_count2, n_best_inliers_count_tmp2);
 
         if (iterations_tmp2 > k_tmp2)
+        {
+            PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] RANSAC reached the k param.\n");
             break;
+        }
         if (iterations_tmp2 > max_iterations_)
         {
             PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] RANSAC reached the maximum number of trials.\n");
@@ -267,14 +297,114 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
 
     std::vector<int> inliers_second;
     // Get the set of inliers that correspond to the best model found so far
-    sac_model_->selectWithinDistanceSecond(model_coefficients_, threshold_, inliers_second, new_indices, *temp);
-    //std::cout << "selected" << std::endl;
+    sac_model_->selectWithinDistanceSecond(model_coefficients_, threshold_, inliers_second);
 
-    // sac_model_->filterInliers(inliers_second, temp, false);
-    // std::cout << "filtered" << std::endl;
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr temp2(new pcl::PointCloud<pcl::PointXYZ>);
+
+    sac_model_->filterInliers(inliers_second, temp_, false);
 
     model_coefficients_vector_.push_back(model_coefficients_);
     inliers_.insert(inliers_.end(), inliers_second.begin(), inliers_second.end());
+
+    // Second plane found. now Third plane.
+
+    std::vector<int> new_indices2;
+    sac_model_->resetIndices(new_indices2, *temp_);
+
+    sac_model_->setTemp(temp_);
+
+    iterations_ = 0;
+    std::size_t n_best_inliers_count3 = 0;
+    k = std::numeric_limits<double>::max();
+    const double one_over_indices3 = 1.0 / static_cast<double>(new_indices2.size());
+
+    std::size_t n_inliers_count3;
+    unsigned skipped_count3 = 0;
+    while (true)
+    {
+
+        {
+            sac_model_->getSamplesSecond(iterations_, selection, new_indices2); // The random number generator used when choosing the samples should not be called in parallel
+        }
+
+        // Search for inliers in the point cloud for the current plane model M
+        if (!sac_model_->computeModelCoefficientsThird(selection, model_coefficients_vector_, model_coefficients)) // This function has to be thread-safe
+        {
+            //++iterations_;
+            unsigned skipped_count_tmp;
+
+            skipped_count_tmp = ++skipped_count3;
+            if (skipped_count_tmp < max_skip)
+                continue;
+            else
+                break;
+        }
+
+        n_inliers_count3 = sac_model_->countWithinDistanceSecond(model_coefficients, threshold_); // This functions has to be thread-safe. Most work is done here
+
+        std::size_t n_best_inliers_count_tmp3;
+
+        n_best_inliers_count_tmp3 = n_best_inliers_count3;
+
+        if (n_inliers_count3 > n_best_inliers_count_tmp3) // This condition is false most of the time, and the critical region is not entered, hopefully leading to more efficient concurrency
+        {
+
+            {
+                // Better match ?
+                if (n_inliers_count3 > n_best_inliers_count3)
+                {
+                    n_best_inliers_count3 = n_inliers_count3; // This write and the previous read of n_best_inliers_count must be consecutive and must not be interrupted!
+                    n_best_inliers_count_tmp3 = n_best_inliers_count3;
+
+                    // Save the current model/inlier/coefficients selection as being the best so far
+                    model_ = selection;
+                    model_coefficients_ = model_coefficients;
+
+                    // Compute the k parameter (k=std::log(z)/std::log(1-w^n))
+                    const double w3 = static_cast<double>(n_best_inliers_count3) * one_over_indices3;
+                    double p_no_outliers = 1.0 - std::pow(w3, static_cast<double>(selection.size()));
+                    // double p_no_outliers = 1.0 - std::pow(w3, static_cast<double>(1));
+                    p_no_outliers = (std::max)(std::numeric_limits<double>::epsilon(), p_no_outliers);       // Avoid division by -Inf
+                    p_no_outliers = (std::min)(1.0 - std::numeric_limits<double>::epsilon(), p_no_outliers); // Avoid division by 0.
+                    k = log_probability / std::log(p_no_outliers);
+                }
+            } // omp critical
+        }
+
+        int iterations_tmp3;
+        double k_tmp3;
+
+        iterations_tmp3 = ++iterations_;
+
+        k_tmp3 = k;
+
+        PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Trial %d out of %f: %u inliers (best is: %u so far).\n", iterations_tmp3, k_tmp3, n_inliers_count3, n_best_inliers_count_tmp3);
+
+        if (iterations_tmp3 > k_tmp3)
+        {
+            PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] RANSAC reached the k param.\n");
+            break;
+        }
+        if (iterations_tmp3 > max_iterations_)
+        {
+            PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] RANSAC reached the maximum number of trials.\n");
+            break;
+        }
+    } // while
+
+    std::vector<int> inliers_third;
+    // Get the set of inliers that correspond to the best model found so far
+    sac_model_->selectWithinDistanceSecond(model_coefficients_, threshold_, inliers_third);
+
+    model_coefficients_vector_.push_back(model_coefficients_);
+    inliers_.insert(inliers_.end(), inliers_third.begin(), inliers_third.end());
+
+    std::cout << "sample time : " << sample_time << std::endl;
+    std::cout << "coeff time : " << compute_coeff_time << std::endl;
+    std::cout << "count time : " << count_time << std::endl;
+    std::cout << "select time : " << select_time << std::endl;
+    std::cout << "filter time : " << filter_time << std::endl;
+
     return (true);
 }
 

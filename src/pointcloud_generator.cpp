@@ -8,6 +8,7 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/filters/voxel_grid.h>
 
 #include <ros/ros.h>
 #include <random>
@@ -159,8 +160,23 @@ int main(int argc, char **argv)
     viewer1.addPointCloud<pcl::PointXYZ>(planes, "src_red");
     viewer1.addPlane(*plane_eq1, "plane");
     viewer1.addPlane(*plane_eq2, "plane");
-    while (!viewer1.wasStopped())
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr planes_filtered(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::VoxelGrid<pcl::PointXYZ> sor;
+    sor.setInputCloud(planes);            // 입력
+    sor.setLeafSize(0.01f, 0.01f, 0.01f); // leaf size  1cm
+    sor.filter(*planes_filtered);
+
+    std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/points_filtered.txt");
+
+    for (int i = 0; i < planes_filtered->size(); i++)
     {
-        viewer1.spinOnce();
+        outfile << planes_filtered->points[i].x << "\t" << planes_filtered->points[i].y << "\t" << planes_filtered->points[i].z << std::endl;
     }
+    outfile.close();
+
+    // while (!viewer1.wasStopped())
+    // {
+    //     viewer1.spinOnce();
+    // }
 }

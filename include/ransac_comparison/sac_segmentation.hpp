@@ -144,7 +144,12 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
     for (int i = 0; i < coeffs.size(); i++)
     {
         model_coefficients[i].values.resize(coeffs[i].size());
-        memcpy(&(model_coefficients[i]).values[0], &coeffs[i][0], coeffs[i].size() * sizeof(float));
+
+        for (int j = 0; j < coeffs[i].size(); j++)
+        {
+            model_coefficients[i].values[j] = coeffs[i][j];
+        }
+        //memcpy(&(model_coefficients[i]).values[0], &coeffs[i][0], coeffs[i].size() * sizeof(float));
     }
     std::cout << "Done!" << std::endl;
 

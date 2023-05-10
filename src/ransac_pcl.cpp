@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
 
-    std::ifstream infile("/home/jyh/catkin_ws/src/ransac_comparison/data/points.txt");
+    std::ifstream infile("/home/jyh/catkin_ws/src/ransac_comparison/data/points_filtered.txt");
     std::string line;
     std::vector<std::vector<double>> v;
     int line_num = 0;
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         planes->points[i].z = v[i][2];
     }
 
-    //std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac1.txt");
+    std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac1_filtered.txt");
 
     for (int i = 0; i < 10; i++)
     {
@@ -68,20 +68,19 @@ int main(int argc, char **argv)
         seg.segment(*inliers, *plane_eq);
         std::cout << seg.getModelType() << ", " << seg.getMethodType() << std::endl;
 
-        // if (plane_eq->values.at(3) > 0)
-        //     outfile << plane_eq->values.at(0) << "\t" << plane_eq->values.at(1) << "\t" << plane_eq->values.at(2) << "\t" << plane_eq->values.at(3) << std::endl;
-        // else
-        //     outfile << -plane_eq->values.at(0) << "\t" << -plane_eq->values.at(1) << "\t" << -plane_eq->values.at(2) << "\t" << -plane_eq->values.at(3) << std::endl;
+        if (plane_eq->values.at(3) > 0)
+            outfile << plane_eq->values.at(0) << "\t" << plane_eq->values.at(1) << "\t" << plane_eq->values.at(2) << "\t" << plane_eq->values.at(3) << std::endl;
+        else
+            outfile << -plane_eq->values.at(0) << "\t" << -plane_eq->values.at(1) << "\t" << -plane_eq->values.at(2) << "\t" << -plane_eq->values.at(3) << std::endl;
         double end = ros::Time::now().toNSec();
         std::cout << "Total Duration : " << (end - start) / 1000000 << " ms" << std::endl;
 
-        std::cout << seg.getAxis() << std::endl;
-        std::cout << seg.getEpsAngle() << std::endl;
+        std::cout << plane_eq->values.at(0) << "\t" << plane_eq->values.at(1) << "\t" << plane_eq->values.at(2) << "\t" << plane_eq->values.at(3) << std::endl;
 
         sleep(1);
     }
 
-    //outfile.close();
+    outfile.close();
 
     ROS_INFO("data saved");
 }

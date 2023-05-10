@@ -182,10 +182,10 @@ void pcl::SampleConsensusModelPlane<PointT>::selectWithinDistance(
     {
         // Calculate the distance from the point to the plane normal as the dot product
         // D = (P-A).N/|N|
-        Eigen::Vector4f pt(input_->points[(*indices_)[i]].x,
-                           input_->points[(*indices_)[i]].y,
-                           input_->points[(*indices_)[i]].z,
-                           1);
+        Eigen::Vector4f pt((*input_)[(*indices_)[i]].x,
+                           (*input_)[(*indices_)[i]].y,
+                           (*input_)[(*indices_)[i]].z,
+                           1.0f);
 
         float distance = std::abs(model_coefficients.dot(pt));
 
