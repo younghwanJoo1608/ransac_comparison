@@ -4,14 +4,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 # Get coefficient data
 
-X = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac1_filtered.txt', sep="\t", header=None)
-
+X = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new3.txt', sep="\t", header=None)
+print(X.size)
 # X = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new.txt', sep="\t", header=None)
 # X = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new2.txt', sep="\t", header=None)
 # = pd.read_csv('/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new3.txt', sep="\t", header=None)
 
-# X = Y[Y[3]<0.15]
+# Y = X[X[3]<0.25]
+# print(Y.size)
+
+# Z = X[X[3]>0.25]
+# Z = Z[Z[3]<0.35]
+# print(Z.size)
+
+# W = X[X[3]>0.35]
+# print(W.size)
 # X = X[X[3]<0.45]
+
+# X = Z
 
 # W = Z[Z[3]<0.15]
 # W = W[W[3]>0.35]

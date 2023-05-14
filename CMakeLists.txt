@@ -56,7 +56,7 @@ target_link_libraries(pointcloud_visualizer
   ${OpenCV_LIBS}
 )
 
-link_directories(${PCL_LIBRARY_DIRS})
+# link_directories(${PCL_LIBRARY_DIRS})
 #add_definitions(${PCL_DEFINITIONS})
 
 add_executable(ransac_pcl
@@ -75,7 +75,6 @@ add_executable(ransac_new
 
 target_link_libraries(ransac_new
   pcl_visualization
-  ${OpenMP_LIBS}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )

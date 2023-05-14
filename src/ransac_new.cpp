@@ -53,12 +53,13 @@ int main(int argc, char **argv)
 
     // std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/pyransac_pcl.txt");
 
-    std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new_filtered.txt", ios::app);
-    std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new2_filtered.txt", ios::app);
-    std::ofstream outfile3("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new3_filtered.txt", ios::app);
+    std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new.txt", ios::app);
+    std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new2.txt", ios::app);
+    std::ofstream outfile3("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new3.txt", ios::app);
+    std::ofstream outfile4("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new_duration.txt", ios::app);
 
     double dur = 0;
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 100; i++)
     {
         std::cout << "Start" << std::endl;
 
@@ -77,23 +78,20 @@ int main(int argc, char **argv)
         pcl::SACSegmentation<pcl::PointXYZ> seg(true);
         seg.setOptimizeCoefficients(false);
         seg.setModelType(pcl::SACMODEL_PLANE);
-        // seg.setMaxIterations(500);
-        std::cout << "model_type_: " << seg.getModelType() << std::endl;
+        seg.setMaxIterations(49);
 
         seg.setIsCuboid(true);
         seg.setMethodType(pcl::SAC_RANSAC);
         seg.setDistanceThreshold(0.01);
         seg.setInputCloud(planes);
-        std::cout << "isCuboid: " << seg.getIsCuboid() << std::endl;
 
-        std::cout << "before start" << std::endl;
         seg.segment(*inliers, plane_eq_model);
 
         // std::vector<Eigen::Vector4f> plane_eqs;
 
         double end = ros::Time::now().toNSec();
         dur += (end - start);
-        std::cout << "Total Duration : " << (end - start) / 1000000 << " ms" << std::endl;
+        outfile4 << (end - start) / 1000000 << std::endl;
         std::cout << plane_eq_model.size() << std::endl;
 
         for (int j = 0; j < plane_eq_model.size(); j++)
@@ -135,11 +133,13 @@ int main(int argc, char **argv)
         //     outfile << -plane_eqs[0](0) << "\t" << -plane_eqs[0](1) << "\t" << -plane_eqs[0](2) << "\t" << -plane_eqs[0](3) << std::endl;
 
         // outfile << plane_eq_model[0]->values[0] << "\t" << plane_eq_model[0]->values[1] << "\t" << plane_eq_model[0]->values[2] << "\t" << plane_eq_model[0]->values[3] << std::endl;
+        sleep(1);
     }
 
     outfile1.close();
     outfile2.close();
     outfile3.close();
+    outfile4.close();
 
     // outfile3.close();
 
@@ -153,6 +153,7 @@ int main(int argc, char **argv)
     // {
     //     viewer1.spinOnce();
     // }
-    std::cout << dur / 10 << std::endl;
+    std::cout << dur / 100 << std::endl;
     ROS_INFO("data saved");
+    return 0;
 }

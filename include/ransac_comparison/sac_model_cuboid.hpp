@@ -189,27 +189,33 @@ bool pcl::SampleConsensusModelCuboid<PointT>::isModelValid(const Eigen::VectorXf
 }
 
 template <typename PointT>
-void pcl::SampleConsensusModelCuboid<PointT>::filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst)
+void pcl::SampleConsensusModelCuboid<PointT>::filterInliers(Indices &inliers, PointCloud &filtered, bool isfirst)
 {
-    pcl::PointIndices::Ptr inliers_ptr(new pcl::PointIndices());
-    inliers_ptr->indices = inliers;
-    // std::cout << "temp : " << temp_->size() << std::endl;
-    pcl::ExtractIndices<PointT> extract;
-    //*filtered.reset(new PointCloud());
-
     if (isfirst)
     {
-        extract.setInputCloud(input_);
-        extract.setIndices(inliers_ptr); // ptr이 들어가야 함. indicesptr 멤버변수를 만들고 fitting 후 inlier ptr을 저장하게 하자.
-        extract.setNegative(true);
-        extract.filter(*filtered);
+        int k = 0;
+        for (int j = 0; j < input_->size(); j++)
+        {
+            if (j == inliers[k])
+            {
+                k++;
+                continue;
+            }
+            filtered.push_back((*input_)[j]);
+        }
     }
     else
     {
-        extract.setInputCloud(temp_);
-        extract.setIndices(inliers_ptr); // ptr이 들어가야 함. indicesptr 멤버변수를 만들고 fitting 후 inlier ptr을 저장하게 하자.
-        extract.setNegative(true);
-        extract.filter(*filtered);
+        int k = 0;
+        for (int j = 0; j < temp_->size(); j++)
+        {
+            if (j == inliers[k])
+            {
+                k++;
+                continue;
+            }
+            filtered.push_back((*temp_)[j]);
+        }
     }
     return;
 }

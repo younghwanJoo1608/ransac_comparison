@@ -112,7 +112,7 @@ namespace pcl
         }
 
         /** \brief Empty destructor */
-        ~SampleConsensusModelCuboid() { std::cout << "out cuboud" << std::endl; }
+        ~SampleConsensusModelCuboid() {}
 
         /** \brief Set the axis along which we need to search for a plane perpendicular to.
          * \param[in] ax the axis along which we need to search for a plane perpendicular to
@@ -187,7 +187,7 @@ namespace pcl
 
         inline __m256 dist8(const std::size_t i, const __m256 &a_vec, const __m256 &b_vec, const __m256 &c_vec, const __m256 &d_vec, const __m256 &abs_help, const PointCloudConstPtr &input) const;
 
-        void filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst) override;
+        void filterInliers(Indices &inliers, PointCloud &filtered, bool isfirst) override;
         void
         resetIndices(Indices &new_indices, PointCloud &filtered) override;
         bool

@@ -187,7 +187,7 @@ namespace pcl
         }
 
         /** \brief Empty destructor */
-        ~SampleConsensusModelPlane() { std::cout << "out plane" << std::endl; }
+        ~SampleConsensusModelPlane() {}
 
         /** \brief Check whether the given index samples can form a valid plane model, compute the model coefficients from
          * these samples and store them internally in model_coefficients_. The plane coefficients are:
@@ -281,7 +281,7 @@ namespace pcl
         using SampleConsensusModel<PointT>::model_size_;
 
         void
-        filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst) override;
+        filterInliers(Indices &inliers, PointCloud &filtered, bool isfirst) override;
         void
         resetIndices(Indices &new_inliers, PointCloud &filtered) override;
 

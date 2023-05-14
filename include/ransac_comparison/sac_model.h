@@ -121,7 +121,7 @@ namespace pcl
         SampleConsensusModel(const PointCloudConstPtr &cloud,
                              const std::vector<int> &indices,
                              bool random = false)
-            : input_(cloud), temp_(), indices_(new std::vector<int>(indices)), new_indices_(new std::vector<int>()), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
+            : input_(cloud), temp_(new PointCloud()), indices_(new std::vector<int>(indices)), new_indices_(new std::vector<int>()), radius_min_(-std::numeric_limits<double>::max()), radius_max_(std::numeric_limits<double>::max()), samples_radius_(0.), samples_radius_search_(), rng_dist_(new boost::uniform_int<>(0, std::numeric_limits<int>::max()))
         {
             if (random)
                 rng_alg_.seed(static_cast<unsigned>(std::time(nullptr)));
@@ -294,7 +294,7 @@ namespace pcl
                                   const double threshold) const = 0;
 
         virtual void
-        filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst) = 0;
+        filterInliers(Indices &inliers, PointCloud &filtered, bool isfirst) = 0;
 
         virtual void
         resetIndices(Indices &new_inliers, PointCloud &filtered) = 0;

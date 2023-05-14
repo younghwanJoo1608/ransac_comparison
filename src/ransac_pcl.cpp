@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
 
-    std::ifstream infile("/home/jyh/catkin_ws/src/ransac_comparison/data/points_filtered.txt");
+    std::ifstream infile("/home/jyh/catkin_ws/src/ransac_comparison/data/points.txt");
     std::string line;
     std::vector<std::vector<double>> v;
     int line_num = 0;
@@ -52,9 +52,10 @@ int main(int argc, char **argv)
         planes->points[i].z = v[i][2];
     }
 
-    std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac1_filtered.txt");
+    std::ofstream outfile("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl.txt", ios::app);
+    std::ofstream outfile_time("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_pcl_time.txt", ios::app);
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 100; i++)
     {
         double start = ros::Time::now().toNSec();
         pcl::ModelCoefficients::Ptr plane_eq(new pcl::ModelCoefficients);
@@ -64,6 +65,7 @@ int main(int argc, char **argv)
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
         seg.setDistanceThreshold(0.01);
+        seg.setMaxIterations(49);
         seg.setInputCloud(planes);
         seg.segment(*inliers, *plane_eq);
         std::cout << seg.getModelType() << ", " << seg.getMethodType() << std::endl;
@@ -73,7 +75,8 @@ int main(int argc, char **argv)
         else
             outfile << -plane_eq->values.at(0) << "\t" << -plane_eq->values.at(1) << "\t" << -plane_eq->values.at(2) << "\t" << -plane_eq->values.at(3) << std::endl;
         double end = ros::Time::now().toNSec();
-        std::cout << "Total Duration : " << (end - start) / 1000000 << " ms" << std::endl;
+        // std::cout << "Total Duration : " << (end - start) / 1000000 << " ms" << std::endl;
+        outfile_time << (end - start) / 1000000 << std::endl;
 
         std::cout << plane_eq->values.at(0) << "\t" << plane_eq->values.at(1) << "\t" << plane_eq->values.at(2) << "\t" << plane_eq->values.at(3) << std::endl;
 
@@ -81,6 +84,7 @@ int main(int argc, char **argv)
     }
 
     outfile.close();
-
+    outfile_time.close();
     ROS_INFO("data saved");
+    return 0;
 }

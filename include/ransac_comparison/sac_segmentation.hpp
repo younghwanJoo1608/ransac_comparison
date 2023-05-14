@@ -116,14 +116,13 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
 
     // Get the model inliers
     sac_->getInliers(inliers.indices);
-    std::cout << "inlers : " << inliers.indices.size() << std::endl;
     // Get the model coefficients
     std::vector<Eigen::VectorXf> coeffs;
     sac_->getModelCoefficients(coeffs);
     for (int i = 0; i < coeffs.size(); i++)
     {
         Eigen::VectorXf coeff = coeffs[i];
-        std::cout << "model_coefficients : " << coeff[0] << ", " << coeff[1] << ", " << coeff[2] << ", " << coeff[3] << ", " << std::endl;
+        // std::cout << "model_coefficients : " << coeff[0] << ", " << coeff[1] << ", " << coeff[2] << ", " << coeff[3] << ", " << std::endl;
     }
 
     // If the user needs optimized coefficients
@@ -151,7 +150,7 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
         }
         //memcpy(&(model_coefficients[i]).values[0], &coeffs[i][0], coeffs[i].size() * sizeof(float));
     }
-    std::cout << "Done!" << std::endl;
+    // std::cout << "Done!" << std::endl;
 
     deinitCompute();
 }

@@ -49,7 +49,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 template <typename PointT>
-void pcl::SampleConsensusModelPlane<PointT>::filterInliers(Indices &inliers, PointCloudPtr filtered, bool isfirst)
+void pcl::SampleConsensusModelPlane<PointT>::filterInliers(Indices &inliers, PointCloud &filtered, bool isfirst)
 {
     return;
 }
