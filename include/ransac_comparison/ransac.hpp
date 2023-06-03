@@ -54,6 +54,7 @@
 #define OPENMP_AVAILABLE_RANSAC true
 #include <ros/ros.h>
 #include <fstream>
+
 //////////////////////////////////////////////////////////////////////////
 template <typename PointT>
 bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
@@ -61,7 +62,6 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     std::ofstream outfile1("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new_time.txt", std::ios::app);
     std::ofstream outfile2("/home/jyh/catkin_ws/src/ransac_comparison/data/ransac_new_iter.txt", std::ios::app);
 
-    std::cout << "ransac:computemodel" << std::endl;
     // Warn and exit if no threshold was set
     if (threshold_ == std::numeric_limits<double>::max())
     {
@@ -85,13 +85,8 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     const unsigned max_skip = max_iterations_ * 10;
 
     int threads = threads_;
-    if (threads >= 0)
-    {
-        // Parallelization desired, but not available
-        PCL_WARN("[pcl::RandomSampleConsensus::computeModel] Parallelization is requested, but OpenMP 3.1 is not available! Continuing without parallelization.\n");
-        //threads = -1;
-        threads = omp_get_num_procs();
-    }
+
+    cuboid_size_.clear();
 
     PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Computing not parallel.\n");
     double start1 = ros::Time::now().toNSec();
@@ -103,7 +98,6 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
 
         {
             sac_model_->getSamples(iterations_, selection); // The random number generator used when choosing the samples should not be called in parallel
-
         }
         if (selection.empty())
         {
@@ -192,12 +186,29 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
 
     // Get the set of inliers that correspond to the best model found so far
     sac_model_->selectWithinDistance(model_coefficients_, threshold_, inliers_);
-    //pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>);
-    sac_model_->filterInliers(inliers_, *temp_, true);
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>);
 
+    Eigen::VectorXf optimized_coefficients;
+    sac_model_->optimizeModelCoefficients(inliers_, model_coefficients_, optimized_coefficients);
+    model_coefficients_ = optimized_coefficients;
+    sac_model_->filterInliers(inliers_, *temp_, true);
+    sac_model_->getMaxDistance(model_coefficients_, threshold_, cuboid_size_);
+    std::cout << inliers_.size() << std::endl;
     model_coefficients_vector_.push_back(model_coefficients_);
 
     // First plane found. now second plane.
+
+    if (temp_->size() < 10)
+    {
+        PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Not enough points to find second plane : %u/%u\n", temp_->size(), 10);
+        for (int i = 1; i < 3; i++)
+        {
+            model_coefficients_ = Eigen::Vector4f::Zero();
+            model_coefficients_vector_.push_back(model_coefficients_);
+            cuboid_size_.push_back(0);
+        }
+        return true;
+    }
 
     std::vector<int> new_indices;
     sac_model_->resetIndices(new_indices, *temp_);
@@ -214,13 +225,17 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
 
     double start2 = ros::Time::now().toNSec();
 
-    while(true)
+    while (true)
     {
 
         {
             sac_model_->getSamplesSecond(iterations_, selection, new_indices); // The random number generator used when choosing the samples should not be called in parallel
         }
-
+        if (selection.empty())
+        {
+            PCL_ERROR("[pcl::RandomSampleConsensus::computeModel] No samples could be selected!\n");
+            break;
+        }
         // Search for inliers in the point cloud for the current plane model M
         if (!sac_model_->computeModelCoefficientsSecond(selection, model_coefficients)) // This function has to be thread-safe
         {
@@ -293,14 +308,27 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     // Get the set of inliers that correspond to the best model found so far
     sac_model_->selectWithinDistanceSecond(model_coefficients_, threshold_, inliers_second);
 
-    //pcl::PointCloud<pcl::PointXYZ>::Ptr temp2(new pcl::PointCloud<pcl::PointXYZ>);
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr temp2(new pcl::PointCloud<pcl::PointXYZ>);
 
     sac_model_->filterInliers(inliers_second, *temp_, false);
-
+    sac_model_->getMaxDistance(model_coefficients_, threshold_, cuboid_size_);
+    std::cout << inliers_second.size() << std::endl;
     model_coefficients_vector_.push_back(model_coefficients_);
     inliers_.insert(inliers_.end(), inliers_second.begin(), inliers_second.end());
 
     // Second plane found. now Third plane.
+
+    if (temp_->size() < 10)
+    {
+        PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Not enough points to find third plane : %u/%u\n", temp_->size(), 10);
+        for (int i = 2; i < 3; i++)
+        {
+            model_coefficients_ = Eigen::Vector4f::Zero();
+            model_coefficients_vector_.push_back(model_coefficients_);
+            cuboid_size_.push_back(0);
+        }
+        return true;
+    }
 
     std::vector<int> new_indices2;
     sac_model_->resetIndices(new_indices2, *temp_);
@@ -322,7 +350,11 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
         {
             sac_model_->getSamplesSecond(iterations_, selection, new_indices2); // The random number generator used when choosing the samples should not be called in parallel
         }
-
+        if (selection.empty())
+        {
+            PCL_ERROR("[pcl::RandomSampleConsensus::computeModel] No samples could be selected!\n");
+            break;
+        }
         // Search for inliers in the point cloud for the current plane model M
         if (!sac_model_->computeModelCoefficientsThird(selection, model_coefficients_vector_, model_coefficients)) // This function has to be thread-safe
         {
@@ -394,10 +426,22 @@ bool pcl::RandomSampleConsensus<PointT>::computeModel(int)
     std::vector<int> inliers_third;
     // Get the set of inliers that correspond to the best model found so far
     sac_model_->selectWithinDistanceSecond(model_coefficients_, threshold_, inliers_third);
+    sac_model_->getMaxDistance(model_coefficients_, threshold_, cuboid_size_);
+
+    if (cuboid_size_[2] == 0)
+    {
+        PCL_DEBUG("[pcl::RandomSampleConsensus::computeModel] Third plane divides cuboid.\n");
+        for (int i = 2; i < 3; i++)
+        {
+            model_coefficients_ = Eigen::Vector4f::Zero();
+            model_coefficients_vector_.push_back(model_coefficients_);
+        }
+        return true;
+    }
 
     model_coefficients_vector_.push_back(model_coefficients_);
     inliers_.insert(inliers_.end(), inliers_third.begin(), inliers_third.end());
-
+    std::cout << inliers_third.size() << std::endl;
     outfile1 << (end1 - start1) / 1000000 << "\t" << (end2 - start2) / 1000000 << "\t" << (end3 - start3) / 1000000 << std::endl;
     outfile1.close();
     outfile2.close();

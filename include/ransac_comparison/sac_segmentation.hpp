@@ -70,7 +70,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT>
-void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<ModelCoefficients> &model_coefficients)
+void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<ModelCoefficients> &model_coefficients, std::vector<float> &cuboid_size)
 {
     // Copy the header information
     inliers.header = model_coefficients[0].header = input_->header;
@@ -102,8 +102,6 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
 
     if (!sac_->computeModel(0))
     {
-        std::cout << "Fail!" << std::endl;
-
         PCL_ERROR("[pcl::%s::segment] Error segmenting the model! No solution found.\n", getClassName().c_str());
         deinitCompute();
         inliers.indices.clear();
@@ -125,6 +123,8 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
         // std::cout << "model_coefficients : " << coeff[0] << ", " << coeff[1] << ", " << coeff[2] << ", " << coeff[3] << ", " << std::endl;
     }
 
+    sac_->getCuboidSize(cuboid_size);
+
     // If the user needs optimized coefficients
     // if (optimize_coefficients_)
     // {
@@ -138,7 +138,7 @@ void pcl::SACSegmentation<PointT>::segment(PointIndices &inliers, std::vector<Mo
     //     model_->selectWithinDistance(coeff_refined, threshold_, inliers.indices);
     // }
 
-    //std::cout << "false : " << std::endl;
+    // std::cout << "false : " << std::endl;
 
     for (int i = 0; i < coeffs.size(); i++)
     {
@@ -169,14 +169,12 @@ bool pcl::SACSegmentation<PointT>::initSACModel(const int model_type)
     {
         if (is_cuboid_)
         {
-            std::cout << "cuboid" << std::endl;
             PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_CUBOID\n", getClassName().c_str());
             model_.reset(new SampleConsensusModelCuboid<PointT>(input_, *indices_, random_));
             break;
         }
         else
         {
-            std::cout << "plane" << std::endl;
             PCL_DEBUG("[pcl::%s::initSACModel] Using a model of type: SACMODEL_PLANE\n", getClassName().c_str());
             model_.reset(new SampleConsensusModelPlane<PointT>(input_, *indices_, random_));
             break;
@@ -316,7 +314,6 @@ void pcl::SACSegmentation<PointT>::initSAC(const int method_type)
     case SAC_RANSAC:
     default:
     {
-        std::cout << "Ransac" << std::endl;
         PCL_DEBUG("[pcl::%s::initSAC] Using a method of type: SAC_RANSAC with a model threshold of %f\n", getClassName().c_str(), threshold_);
         sac_.reset(new RandomSampleConsensus<PointT>(model_, threshold_));
         break;

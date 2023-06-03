@@ -59,14 +59,39 @@ template <typename PointT>
 void pcl::SampleConsensusModelCuboid<PointT>::selectWithinDistance(
     const Eigen::VectorXf &model_coefficients, const double threshold, Indices &inliers)
 {
-    // Check if the model is valid given the user constraints   
-    if (!isModelValid(model_coefficients))
+    // Needs a valid set of model coefficients
+    if (model_coefficients.size() != model_size_)
     {
-        inliers.clear();
+        PCL_ERROR("[pcl::SampleConsensusModelPlane::selectWithinDistance] Invalid number of model coefficients given (%lu)!\n", model_coefficients.size());
         return;
     }
 
-    SampleConsensusModelPlane<PointT>::selectWithinDistance(model_coefficients, threshold, inliers);
+    int nr_p = 0;
+    inliers.resize(indices_->size());
+    error_sqr_dists_.resize(indices_->size());
+
+    // Iterate through the 3d points and calculate the distances from them to the plane
+    for (std::size_t i = 0; i < indices_->size(); ++i)
+    {
+        // Calculate the distance from the point to the plane normal as the dot product
+        // D = (P-A).N/|N|
+        Eigen::Vector4f pt((*input_)[(*indices_)[i]].x,
+                           (*input_)[(*indices_)[i]].y,
+                           (*input_)[(*indices_)[i]].z,
+                           1.0f);
+
+        float distance = std::abs(model_coefficients.dot(pt));
+
+        if (distance < threshold * 3)
+        {
+            // Returns the indices of the points whose distances are smaller than the threshold
+            inliers[nr_p] = (*indices_)[i];
+            error_sqr_dists_[nr_p] = static_cast<double>(distance);
+            ++nr_p;
+        }
+    }
+    inliers.resize(nr_p);
+    error_sqr_dists_.resize(nr_p);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -86,8 +111,8 @@ pcl::SampleConsensusModelCuboid<PointT>::countWithinDistanceAVX(
     for (; (i + 8) <= indices->size(); i += 8)
     {
         const __m256 mask = _mm256_cmp_ps(dist8(i, a_vec, b_vec, c_vec, d_vec, abs_help, input), threshold_vec, _CMP_LT_OQ); // The mask contains 1 bits if the corresponding points are inliers, else 0 bits
-        res = _mm256_add_epi32(res, _mm256_and_si256(_mm256_set1_epi32(1), _mm256_castps_si256(mask)));               // The latter part creates a vector with ones (as 32bit integers) where the points are inliers
-                                                                                                                      // const int res = _mm256_movemask_ps (mask);
+        res = _mm256_add_epi32(res, _mm256_and_si256(_mm256_set1_epi32(1), _mm256_castps_si256(mask)));                      // The latter part creates a vector with ones (as 32bit integers) where the points are inliers
+                                                                                                                             // const int res = _mm256_movemask_ps (mask);
         // if (res &   1) nr_p++;
         // if (res &   2) nr_p++;
         // if (res &   4) nr_p++;
@@ -165,7 +190,12 @@ pcl::SampleConsensusModelCuboid<PointT>::countWithinDistanceSecond(
     return (countWithinDistanceAVX(model_coefficients, threshold, temp_, new_indices_));
 }
 
-
+template <typename PointT>
+void pcl::SampleConsensusModelCuboid<PointT>::optimizeModelCoefficients(
+    const std::vector<int> &inliers, const Eigen::VectorXf &model_coefficients, Eigen::VectorXf &optimized_coefficients) const
+{
+    SampleConsensusModelPlane<PointT>::optimizeModelCoefficients(inliers, model_coefficients, optimized_coefficients);
+}
 //////////////////////////////////////////////////////////////////////////
 template <typename PointT>
 void pcl::SampleConsensusModelCuboid<PointT>::getDistancesToModel(
@@ -250,7 +280,7 @@ bool pcl::SampleConsensusModelCuboid<PointT>::computeModelCoefficientsSecond(con
         PCL_ERROR("[pcl::SampleConsensusModelCuboid::computeModelCoefficients] Invalid set of samples given (%lu)!\n", samples.size());
         return (false);
     }
-    
+
     Eigen::Array4f p3;
     p3 << temp_->points[samples[0]].x, temp_->points[samples[0]].y,
         temp_->points[samples[0]].z, 0;
@@ -280,8 +310,8 @@ bool pcl::SampleConsensusModelCuboid<PointT>::computeModelCoefficientsSecond(con
 }
 template <typename PointT>
 bool pcl::SampleConsensusModelCuboid<PointT>::computeModelCoefficientsThird(const std::vector<int> &samples,
-                                                                            std::vector<Eigen::VectorXf> &model_coefficients_array, 
-                                                                                Eigen::VectorXf &model_coefficients) const
+                                                                            std::vector<Eigen::VectorXf> &model_coefficients_array,
+                                                                            Eigen::VectorXf &model_coefficients) const
 {
     // Need 3 samples
     if (samples.size() != sample_size_)
@@ -343,7 +373,7 @@ void pcl::SampleConsensusModelCuboid<PointT>::selectWithinDistanceSecond(
 
         float distance = std::abs(model_coefficients.dot(pt));
 
-        if (distance < threshold)
+        if (distance < threshold * 3)
         {
             // Returns the indices of the points whose distances are smaller than the threshold
             inliers[nr_p] = (*new_indices_)[i];
@@ -354,6 +384,50 @@ void pcl::SampleConsensusModelCuboid<PointT>::selectWithinDistanceSecond(
     inliers.resize(nr_p);
     error_sqr_dists_.resize(nr_p);
 }
+
+template <typename PointT>
+void pcl::SampleConsensusModelCuboid<PointT>::getMaxDistance(
+    const Eigen::VectorXf &model_coefficients, const double threshold, std::vector<float> &cuboid_size)
+{
+    float max_distance = 0;
+    int pos_distance = 0;
+    int neg_distance = 0;
+    for (std::size_t i = 0; i < input_->size(); ++i)
+    {
+        // Calculate the distance from the point to the plane normal as the dot product
+        // D = (P-A).N/|N|
+        Eigen::Vector4f pt(input_->at(i).x,
+                           input_->at(i).y,
+                           input_->at(i).z,
+                           1);
+
+        float distance = model_coefficients.dot(pt);
+
+        if (distance > threshold * 3)
+        {
+            pos_distance++;
+        }
+        else if (distance < -threshold * 3)
+        {
+            neg_distance++;
+        }
+
+        max_distance = std::max(max_distance, std::abs(distance));
+    }
+
+    if (cuboid_size.size() == 2 && neg_distance > (input_->size() / 30) && pos_distance > (input_->size() / 30))
+    {
+        cuboid_size.push_back(0);
+    }
+    else
+    {
+        cuboid_size.push_back(max_distance);
+    }
+    std::cout << neg_distance << ", " << pos_distance << ", " << input_->size() << std::endl;
+    // cuboid_size.push_back(max_distance);
+    return;
+}
+
 #define PCL_INSTANTIATE_SampleConsensusModelCuboid(T) template class PCL_EXPORTS pcl::SampleConsensusModelCuboid<T>;
 
 #endif // PCL_SAMPLE_CONSENSUS_IMPL_SAC_MODEL_PARALLEL_PLANE_H_

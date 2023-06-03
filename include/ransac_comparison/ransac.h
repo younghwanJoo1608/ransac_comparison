@@ -72,6 +72,7 @@ namespace pcl
         using SampleConsensus<PointT>::inliers_;
         using SampleConsensus<PointT>::probability_;
         using SampleConsensus<PointT>::threads_;
+        using SampleConsensus<PointT>::cuboid_size_;
 
         /** \brief RANSAC (RAndom SAmple Consensus) main constructor
          * \param[in] model a Sample Consensus model
@@ -94,7 +95,7 @@ namespace pcl
             max_iterations_ = 10000;
         }
 
-        ~RandomSampleConsensus(){}
+        ~RandomSampleConsensus() {}
 
         /** \brief Compute the actual model and find the inliers
          * \param[in] debug_verbosity_level enable/disable on-screen debug information and set the verbosity level

@@ -241,8 +241,11 @@ namespace pcl
          * \param[out] inliers the resultant point indices that support the model found (inliers)
          * \param[out] model_coefficients the resultant model coefficients
          */
+        // virtual void
+        // segment(PointIndices &inliers, std::vector<ModelCoefficients> &model_coefficients);
+
         virtual void
-        segment(PointIndices &inliers, std::vector<ModelCoefficients> &model_coefficients);
+        segment(PointIndices &inliers, std::vector<ModelCoefficients> &model_coefficients, std::vector<float> &cuboid_size);
 
     protected:
         /** \brief Initialize the Sample Consensus model and set its parameters.

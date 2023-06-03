@@ -294,6 +294,11 @@ namespace pcl
                                   const double threshold) const = 0;
 
         virtual void
+        getMaxDistance(const Eigen::VectorXf &model_coefficients,
+                       const double threshold,
+                       std::vector<float> &cuboid_size) = 0;
+
+        virtual void
         filterInliers(Indices &inliers, PointCloud &filtered, bool isfirst) = 0;
 
         virtual void
@@ -399,16 +404,14 @@ namespace pcl
         }
         void setTemp(PointCloudConstPtr temp)
         {
-            std::cout << "A" << std::endl;
             temp_.reset(new PointCloud(*temp));
-            std::cout << "B" << std::endl;
         }
         /** \brief Set the minimum and maximum allowable radius limits for the
-           * model (applicable to models that estimate a radius)
-           * \param[in] min_radius the minimum radius model
-           * \param[in] max_radius the maximum radius model
-           * \todo change this to set limits on the entire model
-           */
+         * model (applicable to models that estimate a radius)
+         * \param[in] min_radius the minimum radius model
+         * \param[in] max_radius the maximum radius model
+         * \todo change this to set limits on the entire model
+         */
         inline void
         setRadiusLimits(const double &min_radius, const double &max_radius)
         {

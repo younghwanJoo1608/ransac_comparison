@@ -200,7 +200,7 @@ namespace pcl
                                  Eigen::VectorXf &model_coefficients) const override;
         bool
         computeModelCoefficientsSecond(const std::vector<int> &samples,
-                                 Eigen::VectorXf &model_coefficients) const override;
+                                       Eigen::VectorXf &model_coefficients) const override;
         bool
         computeModelCoefficientsThird(const std::vector<int> &samples,
                                       std::vector<Eigen::VectorXf> &model_coefficients_array,
@@ -226,6 +226,12 @@ namespace pcl
         selectWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
                                    const double threshold,
                                    std::vector<int> &inliers) override;
+
+        void
+        getMaxDistance(const Eigen::VectorXf &model_coefficients,
+                       const double threshold,
+                       std::vector<float> &cuboid_size) override;
+
         /** \brief Count all the points which respect the given model coefficients as inliers.
          *
          * \param[in] model_coefficients the coefficients of a model that we need to compute distances to

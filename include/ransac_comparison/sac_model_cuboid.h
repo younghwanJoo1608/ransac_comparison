@@ -40,7 +40,7 @@
 
 #pragma once
 
-//#include <pcl/sample_consensus/sac_model_plane.h>
+// #include <pcl/sample_consensus/sac_model_plane.h>
 #include "sac_model_plane.h"
 #include <pcl/filters/extract_indices.h>
 #include <pmmintrin.h>
@@ -88,7 +88,7 @@ namespace pcl
          * \param[in] random if true set the random seed to the current time, else set to 12345 (default: false)
          */
         SampleConsensusModelCuboid(const PointCloudConstPtr &cloud,
-                                          bool random = false)
+                                   bool random = false)
             : SampleConsensusModelPlane<PointT>(cloud, random), axis_(Eigen::Vector3f::Zero()), eps_angle_(0.0), sin_angle_(-1.0)
         {
             model_name_ = "SampleConsensusModelCuboid";
@@ -102,8 +102,8 @@ namespace pcl
          * \param[in] random if true set the random seed to the current time, else set to 12345 (default: false)
          */
         SampleConsensusModelCuboid(const PointCloudConstPtr &cloud,
-                                          const Indices &indices,
-                                          bool random = false)
+                                   const Indices &indices,
+                                   bool random = false)
             : SampleConsensusModelPlane<PointT>(cloud, indices, random), axis_(Eigen::Vector3f::Zero()), eps_angle_(0.0), sin_angle_(-1.0)
         {
             model_name_ = "SampleConsensusModelCuboid";
@@ -171,7 +171,8 @@ namespace pcl
         inline pcl::SacModel
         getModelType() const override { return (SACMODEL_PLANE); }
 
-        void setTemp(PointCloudConstPtr temp){
+        void setTemp(PointCloudConstPtr temp)
+        {
             temp_.reset(new PointCloud(*temp));
         }
 
@@ -209,9 +210,19 @@ namespace pcl
         countWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
                                   const double threshold) const override;
         void
+        optimizeModelCoefficients(const std::vector<int> &inliers,
+                                  const Eigen::VectorXf &model_coefficients,
+                                  Eigen::VectorXf &optimized_coefficients) const override;
+
+        void
         selectWithinDistanceSecond(const Eigen::VectorXf &model_coefficients,
                                    const double threshold,
                                    std::vector<int> &inliers) override;
+
+        void
+        getMaxDistance(const Eigen::VectorXf &model_coefficients,
+                       const double threshold,
+                       std::vector<float> &cuboid_size) override;
         /** \brief The axis along which we need to search for a plane perpendicular to. */
         Eigen::Vector3f axis_;
 
@@ -221,7 +232,7 @@ namespace pcl
         /** \brief The sine of the angle*/
         double sin_angle_;
 
-        //PointCloudPtr filtered_pcd_;
+        // PointCloudPtr filtered_pcd_;
     };
 }
 
